@@ -32,7 +32,15 @@
     "no_data": "No data yet",
     "insights_title": "Insights",
     "insights_loading": "Analyzing...",
-    "insights_empty": "Log a few days to see connections between learning, finance, and health."
+    "insights_empty": "Log a few days to see connections between learning, finance, and health.",
+    "burnout_title": "Burnout Risk",
+    "burnout_low": "Low",
+    "burnout_medium": "Medium",
+    "burnout_high": "High",
+    "burnout_no_data": "Add a few check-ins to analyse",
+    "forecast_title": "Spending Forecast (30 d)",
+    "forecast_no_data": "Add transactions to get a forecast",
+    "forecast_currency": "{{amount}} {{currency}}"
   },
   "learning": {
     "title": "Learning",

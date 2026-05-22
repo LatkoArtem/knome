@@ -142,6 +142,42 @@ async def rule_weekly_report(user_id: str) -> Optional[str]:
     )
 
 
+async def rule_burnout_risk(user_id: str) -> Optional[str]:
+    """Pattern: burnout score >= 60 (high risk)."""
+    from datetime import date, timedelta
+    from graph.queries import get_learning_sessions
+    from ml.burnout import predict as burnout_predict
+
+    checkins = get_recent_checkins(user_id, limit=14)
+    sessions = get_learning_sessions(user_id, limit=30)
+
+    today = date.today()
+    def _count(offset: int, window: int) -> int:
+        start = (today - timedelta(days=offset + window)).isoformat()
+        end   = (today - timedelta(days=offset)).isoformat()
+        return sum(1 for s in sessions if start <= s["date"][:10] <= end)
+
+    result = burnout_predict(checkins, _count(0, 7), _count(7, 7))
+    if result.level != "high":
+        return None
+
+    ctx = get_user_context(user_id)
+    name = ctx.get("user", {}).get("name", "")
+    top_factor = result.factors[0] if result.factors else ""
+    fallback = (
+        f"{'Привіт' + (', ' + name) if name else 'Привіт'}, "
+        f"помітив ознаки перевтоми (ризик {result.score}/100). "
+        f"Може варто зробити паузу? 🌿"
+    )
+    return await _llm_or(
+        "You are Knome. The user shows high burnout risk. Send a caring, brief (2 sentences) message in Ukrainian. "
+        "Mention that you noticed signs of fatigue. Don't be dramatic.",
+        f"User: {name}. Burnout score: {result.score}/100. Top factor: {top_factor}. "
+        f"Recommendations: {', '.join(result.recommendations[:2])}.",
+        fallback,
+    )
+
+
 # ── Run all event/pattern rules for one user ────────────────────────────────
 
 async def evaluate_all(user_id: str) -> list[tuple[str, str]]:
@@ -154,6 +190,7 @@ async def evaluate_all(user_id: str) -> list[tuple[str, str]]:
         ("learning_gap",    rule_learning_gap),
         ("low_mood_streak", rule_low_mood_streak),
         ("spending_anomaly", rule_spending_anomaly),
+        ("burnout_risk",    rule_burnout_risk),
     ]
     for trigger_type, fn in checks:
         try:

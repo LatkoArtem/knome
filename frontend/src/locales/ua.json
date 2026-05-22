@@ -32,7 +32,15 @@
     "no_data": "Даних поки немає",
     "insights_title": "Інсайти",
     "insights_loading": "Аналізую...",
-    "insights_empty": "Логуй кілька днів щоб побачити зв'язки між навчанням, фінансами і здоров'ям."
+    "insights_empty": "Логуй кілька днів щоб побачити зв'язки між навчанням, фінансами і здоров'ям.",
+    "burnout_title": "Ризик вигорання",
+    "burnout_low": "Низький",
+    "burnout_medium": "Середній",
+    "burnout_high": "Високий",
+    "burnout_no_data": "Додай кілька check-інів для аналізу",
+    "forecast_title": "Прогноз витрат (30 дн.)",
+    "forecast_no_data": "Додай транзакції для прогнозу",
+    "forecast_currency": "{{amount}} {{currency}}"
   },
   "learning": {
     "title": "Навчання",

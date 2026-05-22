@@ -9,6 +9,7 @@ from api.learning import router as learning_router
 from api.finance import router as finance_router
 from api.health_domain import router as health_domain_router
 from api.insights import router as insights_router
+from api.ml import router as ml_router
 from triggers import engine as trigger_engine
 
 
@@ -36,3 +37,4 @@ app.include_router(learning_router, prefix="/api")
 app.include_router(finance_router, prefix="/api")
 app.include_router(health_domain_router, prefix="/api")
 app.include_router(insights_router, prefix="/api")
+app.include_router(ml_router, prefix="/api")
