@@ -29,7 +29,10 @@
     "mood": "Mood",
     "sleep": "Sleep",
     "checkins": "check-ins",
-    "no_data": "No data yet"
+    "no_data": "No data yet",
+    "insights_title": "Insights",
+    "insights_loading": "Analyzing...",
+    "insights_empty": "Log a few days to see connections between learning, finance, and health."
   },
   "learning": {
     "title": "Learning",
