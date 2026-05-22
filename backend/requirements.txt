@@ -32,7 +32,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 
 # Scheduling
-apscheduler==3.10.4
+apscheduler==3.11.2
 
 # Testing
 pytest==8.3.4

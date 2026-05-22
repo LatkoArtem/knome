@@ -68,7 +68,7 @@ _RULES: dict[str, list[str]] = {
         "vodafone", "lifecell", "lifecell", "електрика", "electricity",
         "газ", "gas", "вода", "water", "опалення", "heating",
         "оренда", "rent", "квартира", "apartment", "страховка", "insurance",
-        "netflix" , "icloud", "google one", "subscri",
+        "icloud", "google one", "subscri",
     ],
     "одяг": [
         "одяг", "clothes", "clothing", "взуття", "shoes", "шопінг", "shopping",

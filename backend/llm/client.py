@@ -3,7 +3,7 @@ Ollama LLM client with transparent fallback.
 Returns None on any error so callers can fall back to rule-based responses.
 """
 import logging
-from typing import Optional
+from typing import Optional, AsyncIterator
 
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -11,7 +11,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "qwen2.5:7b"   # best UA support + quality on CPU; fallback: gemma3:4b
+DEFAULT_MODEL = "qwen2.5:7b"
 VISION_MODEL = "llava"
 
 _clients: dict[str, ChatOllama] = {}
@@ -33,7 +33,7 @@ async def llm_respond(
     user: str,
     model: str = DEFAULT_MODEL,
 ) -> Optional[str]:
-    """Call Ollama and return the text response, or None if unavailable."""
+    """Call Ollama and return the full text response, or None if unavailable."""
     try:
         client = _get_client(model)
         result = await client.ainvoke([
@@ -45,6 +45,29 @@ async def llm_respond(
     except Exception as exc:
         logger.debug("Ollama unavailable (%s), using rule-based fallback", exc)
         return None
+
+
+async def llm_stream(
+    system: str,
+    user: str,
+    model: str = DEFAULT_MODEL,
+) -> AsyncIterator[str]:
+    """
+    Stream tokens from Ollama one by one.
+    Yields empty string on error so caller can fall back gracefully.
+    """
+    try:
+        client = _get_client(model)
+        async for chunk in client.astream([
+            SystemMessage(content=system),
+            HumanMessage(content=user),
+        ]):
+            token = chunk.content
+            if token:
+                yield token
+    except Exception as exc:
+        logger.debug("Ollama stream unavailable (%s)", exc)
+        return
 
 
 async def is_available(model: str = DEFAULT_MODEL) -> bool:
