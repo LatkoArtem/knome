@@ -93,29 +93,32 @@ function EmptyState({ onSuggestion }) {
 
   const SUGGESTIONS = lang === 'en'
     ? [
-        { color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', text: 'Studied Python for 30 minutes' },
-        { color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', text: 'Spent $15 on groceries at Walmart' },
-        { color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', text: 'Slept 7 hours, mood 8/10' },
+        { color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', icon: '📚', text: 'Studied Python for 30 minutes' },
+        { color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: '💳', text: 'Spent $15 on groceries at Walmart' },
+        { color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', icon: '🌙', text: 'Slept 7 hours, mood 8/10' },
       ]
     : [
-        { color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', text: 'Позаймався Python 30 хвилин' },
-        { color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', text: 'Витратив 250 грн на продукти в АТБ' },
-        { color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', text: 'Спав 7 годин, настрій 8/10' },
+        { color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', icon: '📚', text: 'Позаймався Python 30 хвилин' },
+        { color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: '💳', text: 'Витратив 250 грн на продукти в АТБ' },
+        { color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', icon: '🌙', text: 'Спав 7 годин, настрій 8/10' },
       ]
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-5 px-4 text-center animate-fade-in">
+    <div className="flex flex-col items-center justify-center min-h-full gap-6 px-4 py-16 text-center animate-fade-up">
       <IllustrationChat />
-      <div>
-        <h2 className="text-xl font-semibold text-zinc-100 tracking-tight mb-1.5">{t('chat.empty_title')}</h2>
-        <p className="text-sm text-zinc-500 max-w-sm leading-relaxed">{t('chat.empty_sub')}</p>
+      <div className="space-y-1.5">
+        <h2 className="text-xl font-semibold text-zinc-100 tracking-tight">{t('chat.empty_title')}</h2>
+        <p className="text-sm text-zinc-500 max-w-xs leading-relaxed">{t('chat.empty_sub')}</p>
       </div>
-      <div className="flex flex-col gap-2 w-full max-w-sm">
-        <p className="text-xs text-zinc-600 mb-1">{t('chat.empty_try')}</p>
-        {SUGGESTIONS.map(({ color, text }) => (
+      <div className="flex flex-col gap-2 w-full max-w-xs">
+        <p className="text-2xs text-zinc-600 uppercase tracking-widest mb-0.5">{t('chat.empty_try')}</p>
+        {SUGGESTIONS.map(({ color, icon, text }) => (
           <button key={text} onClick={() => onSuggestion(text)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm text-left hover:brightness-125 transition-all duration-150 ${color}`}>
-            <span className="italic text-current opacity-80">«{text}»</span>
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm text-left
+              hover:scale-[1.02] hover:brightness-110 active:scale-[0.99]
+              transition-all duration-150 ease-out-expo ${color}`}>
+            <span className="text-base shrink-0">{icon}</span>
+            <span className="italic opacity-80 leading-snug">«{text}»</span>
           </button>
         ))}
       </div>
@@ -180,11 +183,15 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="shrink-0 px-4 py-3 border-t border-white/[0.06] bg-[#09090B]">
+      <div className="shrink-0 px-4 py-3 border-t border-white/[0.06] bg-[#09090B]/95 backdrop-blur">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 focus-within:border-zinc-700 transition-colors">
+          <div className="flex items-end gap-2 bg-zinc-900/80 border border-zinc-800
+                          rounded-xl px-4 py-2
+                          focus-within:border-blue-500/50 focus-within:shadow-glow-blue
+                          transition-all duration-200">
             <textarea ref={inputRef} rows={1}
-              className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none py-1.5 max-h-32"
+              className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500
+                         focus:outline-none resize-none py-1.5 max-h-32 leading-relaxed"
               placeholder={t('chat.placeholder')}
               value={input}
               onChange={(e) => {
@@ -194,12 +201,19 @@ export default function Chat() {
               }}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
             />
-            <button onClick={() => handleSend()} disabled={!input.trim() || isLoading}
-              className="shrink-0 w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors mb-0.5">
+            <button
+              onClick={() => handleSend()}
+              disabled={!input.trim() || isLoading}
+              className="shrink-0 w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500
+                         disabled:opacity-25 disabled:cursor-not-allowed
+                         flex items-center justify-center
+                         transition-all duration-150 active:scale-95 mb-0.5
+                         shadow-[0_1px_4px_rgba(37,99,235,0.3)]"
+            >
               <Send className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
-          <p className="text-center text-[10px] text-zinc-700 mt-2">{t('chat.hint')}</p>
+          <p className="text-center text-2xs text-zinc-700 mt-1.5">{t('chat.hint')}</p>
         </div>
       </div>
     </div>

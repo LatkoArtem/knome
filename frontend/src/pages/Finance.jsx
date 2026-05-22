@@ -306,11 +306,11 @@ export default function Finance() {
   }
 
   return (
-    <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
+    <div className="page-narrow">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Фінанси</h1>
+          <h1 className="page-title">Фінанси</h1>
           <p className="text-sm text-zinc-500 mt-0.5">Витрати та транзакції</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -403,24 +403,39 @@ export default function Finance() {
 
         {/* Transactions list */}
         <div className="card overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/[0.06]">
+          <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
             <p className="section-label">Останні транзакції</p>
+            {data?.recent_transactions?.length > 0 && (
+              <span className="text-2xs text-zinc-600 tabular-nums">{data.recent_transactions.length} записів</span>
+            )}
           </div>
           {data?.recent_transactions?.length ? (
             <ul className="divide-y divide-white/[0.04]">
               {data.recent_transactions.map((tx, i) => (
-                <li key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors">
-                  <span className={`badge shrink-0 border ${CAT_COLOR[tx.category] || CAT_COLOR['інше']}`}>{tx.category}</span>
-                  <span className="flex-1 text-sm text-zinc-400 truncate">{tx.description || tx.category}</span>
-                  <span className="text-sm font-semibold text-zinc-200 shrink-0">{tx.amount.toFixed(0)} <span className="text-zinc-500 font-normal">{tx.currency}</span></span>
+                <li key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/20 transition-colors group">
+                  <span className={`badge shrink-0 border ${CAT_COLOR[tx.category] || CAT_COLOR['інше']}`}>
+                    {tx.category}
+                  </span>
+                  <span className="flex-1 text-sm text-zinc-400 truncate min-w-0">
+                    {tx.description || tx.category}
+                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-zinc-200 tabular-nums">
+                      {tx.amount.toFixed(0)}
+                      <span className="text-zinc-500 font-normal text-xs ml-0.5">{tx.currency}</span>
+                    </p>
+                    {tx.date && (
+                      <p className="text-2xs text-zinc-700 tabular-nums">{tx.date.slice(0, 10)}</p>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
           ) : (
             <div className="flex flex-col items-center py-10 gap-3">
               <IllustrationFinance />
-              <p className="text-sm text-zinc-600">Транзакцій ще немає</p>
-              <p className="text-xs text-zinc-700">Напиши у чаті або натисни «+ Додати»</p>
+              <p className="empty-state-title">Транзакцій ще немає</p>
+              <p className="empty-state-sub">Напиши у чаті або натисни «+ Додати»</p>
             </div>
           )}
         </div>

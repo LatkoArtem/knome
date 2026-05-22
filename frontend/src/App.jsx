@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from './store'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -21,17 +21,30 @@ function PrivateRoute({ children }) {
 
 const NO_SHELL = ['/login', '/onboarding']
 
+/* Scrolls main content to top on every route change */
+function ScrollReset({ mainRef }) {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname])
+  return null
+}
+
 function Shell({ children }) {
   const location = useLocation()
   const hasShell = !NO_SHELL.includes(location.pathname)
+  const mainRef = useRef(null)
 
   if (!hasShell) return children
 
   return (
     <div className="flex h-screen bg-[#09090B]">
       <Sidebar />
-      {/* Main content — offset by sidebar on desktop */}
-      <main className="flex-1 lg:ml-[220px] min-h-screen overflow-y-auto pb-14 lg:pb-0">
+      <main
+        ref={mainRef}
+        className="flex-1 lg:ml-[220px] min-h-screen overflow-y-auto pb-14 lg:pb-0 focus:outline-none"
+      >
+        <ScrollReset mainRef={mainRef} />
         {children}
       </main>
       <QuickAdd />
@@ -47,8 +60,11 @@ function LanguageSync() {
 }
 
 export default function App() {
+  const theme = useStore((s) => s.theme)
+
   return (
-    <div className="bg-[#09090B] text-zinc-100 min-h-screen font-sans">
+    /* Apply `dark` class so Tailwind dark: variants work. Body bg stays #09090B in dark. */
+    <div className={`${theme === 'dark' ? 'dark' : ''} bg-[#09090B] text-zinc-100 min-h-screen font-sans antialiased`}>
       <ErrorBoundary>
         <BrowserRouter>
           <LanguageSync />

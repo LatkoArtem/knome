@@ -148,10 +148,10 @@ export default function Learning() {
   }
 
   return (
-    <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
+    <div className="page-narrow">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Навчання</h1>
+          <h1 className="page-title">Навчання</h1>
           <p className="text-sm text-zinc-500 mt-0.5">Цілі, сесії, повторення</p>
         </div>
         <div className="flex gap-2">
@@ -190,14 +190,15 @@ export default function Learning() {
                 placeholder="Тема: Python, English, математика..."
                 className="input" onKeyDown={e => e.key === 'Enter' && addSession()} />
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-zinc-400">Тривалість</label>
-                  <span className="text-sm font-semibold text-zinc-200">{sessionMin} хв</span>
+                  <span className="text-sm font-bold text-zinc-200 tabular-nums">{sessionMin} хв</span>
                 </div>
                 <input type="range" min={5} max={180} step={5} value={sessionMin}
                   onChange={e => setSessionMin(Number(e.target.value))}
-                  className="w-full h-1.5 rounded-full bg-zinc-800 appearance-none cursor-pointer accent-blue-500" />
-                <div className="flex justify-between text-[10px] text-zinc-700 mt-1"><span>5 хв</span><span>3 год</span></div>
+                  style={{ background: `linear-gradient(to right, #3b82f6 ${((sessionMin-5)/175)*100}%, #27272a ${((sessionMin-5)/175)*100}%)` }}
+                  className="w-full cursor-pointer" />
+                <div className="flex justify-between text-2xs text-zinc-700 mt-1"><span>5 хв</span><span>3 год</span></div>
               </div>
               <div className="flex gap-2">
                 <button onClick={addSession} disabled={saving || !sessionTopic.trim()} className="btn-primary flex-1">
@@ -245,65 +246,81 @@ export default function Learning() {
         )}
 
         {/* Stats row */}
-        {data && (
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Цього тижня', value: data.sessions_this_week, unit: 'сесій', color: 'text-blue-400' },
-              { label: 'Хвилин',     value: data.total_minutes,       unit: 'хв',    color: 'text-indigo-400' },
-              { label: 'Цілей',      value: data.goals?.length ?? 0,  unit: 'цілей', color: 'text-emerald-400' },
-            ].map(({ label, value, unit, color }) => (
-              <div key={label} className="card p-4 text-center">
-                <p className={`text-2xl font-bold ${color}`}>{value ?? 0}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">{unit}</p>
-                <p className="text-[10px] text-zinc-600 mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Цього тижня', value: data?.sessions_this_week ?? 0, unit: 'сесій', color: 'text-blue-400',    bg: 'bg-blue-500/5' },
+            { label: 'Хвилин',     value: data?.total_minutes       ?? 0, unit: 'хв',    color: 'text-indigo-400', bg: 'bg-indigo-500/5' },
+            { label: 'Цілей',      value: data?.goals?.length       ?? 0, unit: 'цілей', color: 'text-emerald-400', bg: 'bg-emerald-500/5' },
+          ].map(({ label, value, unit, color, bg }) => (
+            <div key={label} className={`card ${bg} p-4 text-center border-white/[0.04]`}>
+              <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
+              <p className="text-2xs text-zinc-500 mt-1 uppercase tracking-wide">{unit}</p>
+              <p className="text-2xs text-zinc-700 mt-0.5">{label}</p>
+            </div>
+          ))}
+        </div>
 
         {/* Goals */}
-        <div className="card overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/[0.06]">
+        <div className="card accent-learning overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
             <p className="section-label">Мої цілі</p>
+            {data?.goals?.length > 0 && (
+              <span className="text-2xs text-zinc-600">{data.goals.length} цілей</span>
+            )}
           </div>
           {data?.goals?.length ? (
             <ul className="divide-y divide-white/[0.04]">
               {data.goals.map((g, i) => (
-                <li key={i} className="flex items-start gap-3 px-5 py-3.5">
-                  <span className="mt-0.5 w-4 h-4 rounded border border-blue-500/40 bg-blue-500/10 flex items-center justify-center shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <li key={i} className="flex items-start gap-3 px-5 py-3.5 hover:bg-zinc-800/20 transition-colors">
+                  <span className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                    g.status === 'done'
+                      ? 'border-emerald-500/50 bg-emerald-500/10'
+                      : 'border-blue-500/40 bg-blue-500/10'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${g.status === 'done' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
                   </span>
-                  <span className="text-sm text-zinc-300">{g.description}</span>
-                  <span className={`ml-auto shrink-0 text-xs ${g.status === 'done' ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                    {g.status === 'done' ? '✓' : '●'}
+                  <span className={`text-sm leading-relaxed ${g.status === 'done' ? 'text-zinc-500 line-through' : 'text-zinc-300'}`}>
+                    {g.description}
                   </span>
+                  {g.status === 'done' && (
+                    <span className="ml-auto shrink-0 text-xs text-emerald-500">✓</span>
+                  )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="px-5 py-8 text-center text-sm text-zinc-600">Цілей ще немає — додай першу!</p>
+            <div className="empty-state">
+              <p className="empty-state-title">Цілей ще немає</p>
+              <p className="empty-state-sub">Натисни «+ Ціль» щоб додати першу</p>
+            </div>
           )}
         </div>
 
         {/* Recent sessions */}
         <div className="card overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/[0.06]">
+          <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
             <p className="section-label">Останні сесії</p>
+            {data?.recent_sessions?.length > 0 && (
+              <span className="text-2xs text-zinc-600">{data.sessions_this_week} цього тижня</span>
+            )}
           </div>
           {data?.recent_sessions?.length ? (
             <ul className="divide-y divide-white/[0.04]">
               {data.recent_sessions.slice(0, 5).map((s, i) => (
                 <li key={i} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-800/20 transition-colors">
                   <span className="text-sm text-zinc-400">{s.topic || 'Сесія навчання'}</span>
-                  <div className="flex items-center gap-3 text-xs text-zinc-500">
-                    <span className="text-blue-400 font-medium">{s.duration} хв</span>
-                    <span>{s.date?.slice(0, 10)}</span>
+                  <div className="flex items-center gap-3 text-xs text-zinc-500 shrink-0">
+                    <span className="text-blue-400 font-medium tabular-nums">{s.duration} хв</span>
+                    <span className="tabular-nums">{s.date?.slice(0, 10)}</span>
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="px-5 py-8 text-center text-sm text-zinc-600">Сесій ще немає</p>
+            <div className="empty-state">
+              <p className="empty-state-title">Сесій ще немає</p>
+              <p className="empty-state-sub">Натисни «+ Сесія» або напиши у чаті</p>
+            </div>
           )}
         </div>
       </div>
