@@ -22,6 +22,7 @@ from api.insights import router as insights_router
 from api.ml import router as ml_router
 from api.monobank import router as monobank_router
 from api.user import router as user_router
+from api.report import router as report_router
 from triggers import engine as trigger_engine
 
 logging.basicConfig(
@@ -73,3 +74,4 @@ app.include_router(health_domain_router, prefix="/api")
 app.include_router(insights_router, prefix="/api")
 app.include_router(ml_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
+app.include_router(report_router, prefix="/api")

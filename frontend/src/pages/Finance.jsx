@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
@@ -124,6 +125,51 @@ function MonobankCard({ userId, onSynced }) {
   )
 }
 
+const CAT_CHART_COLORS = {
+  'їжа': '#f97316', transport: '#3b82f6', розваги: '#a855f7',
+  навчання: '#6366f1', "здоров'я": '#f43f5e', комунальні: '#71717a',
+  одяг: '#eab308', інше: '#52525b',
+}
+
+function buildDailyChart(transactions = []) {
+  const map = {}
+  const today = new Date()
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    map[key] = { date: key.slice(5), amount: 0 }
+  }
+  for (const tx of transactions) {
+    const key = tx.date?.slice(0, 10)
+    if (key && map[key]) map[key].amount += tx.amount
+  }
+  return Object.values(map)
+}
+
+function SpendingChart({ transactions, currency }) {
+  const chartData = buildDailyChart(transactions)
+  const hasData = chartData.some(d => d.amount > 0)
+  if (!hasData) return null
+  return (
+    <div className="card p-5">
+      <p className="section-label mb-4">Витрати за 14 днів</p>
+      <ResponsiveContainer width="100%" height={120}>
+        <BarChart data={chartData} barSize={14} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+          <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
+          <Tooltip
+            contentStyle={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 12 }}
+            labelStyle={{ color: '#a1a1aa' }}
+            itemStyle={{ color: '#e4e4e7' }}
+            formatter={(v) => [`${v.toFixed(0)} ${currency}`, 'Витрати']}
+          />
+          <Bar dataKey="amount" radius={[4, 4, 0, 0]} fill="#3b82f6" opacity={0.9} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export default function Finance() {
   const userId = useStore((s) => s.userId)
   const [data, setData] = useState(null)
@@ -210,6 +256,11 @@ export default function Finance() {
 
         {/* Monobank */}
         <MonobankCard userId={userId} onSynced={load} />
+
+        {/* Spending chart */}
+        {data?.recent_transactions?.length > 0 && (
+          <SpendingChart transactions={data.recent_transactions} currency={data.currency} />
+        )}
 
         {/* Summary */}
         {data && (

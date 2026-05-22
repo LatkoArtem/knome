@@ -51,6 +51,18 @@ export default function Dashboard() {
   const [insightsLoading, setInsightsLoading] = useState(false)
   const [burnout, setBurnout] = useState(null)
   const [forecast, setForecast] = useState(null)
+  const [report, setReport] = useState(null)
+  const [reportLoading, setReportLoading] = useState(false)
+
+  const generateReport = async () => {
+    setReportLoading(true)
+    try {
+      const res = await fetch(`${API}/report/weekly/${userId}`, { method: 'POST' })
+      const data = await res.json()
+      setReport(data?.report || null)
+    } catch { setReport(null) }
+    finally { setReportLoading(false) }
+  }
 
   useEffect(() => {
     if (!userId) return
@@ -215,6 +227,35 @@ export default function Dashboard() {
             </div>
           ) : (
             <p className="text-sm text-zinc-600">Збери більше даних для перших інсайтів</p>
+          )}
+        </div>
+
+        {/* Weekly AI Report */}
+        <div className="card p-5 sm:col-span-2 lg:col-span-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📊</span>
+              <span className="section-label">Тижневий AI-звіт</span>
+            </div>
+            <button
+              onClick={generateReport}
+              disabled={reportLoading}
+              className="btn-outline text-xs px-3 py-1.5"
+            >
+              {reportLoading ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 border-2 border-zinc-600 border-t-blue-500 rounded-full animate-spin" />
+                  Генеруємо...
+                </span>
+              ) : report ? '↻ Оновити' : '✨ Згенерувати'}
+            </button>
+          </div>
+          {report ? (
+            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap animate-fade-in">{report}</p>
+          ) : (
+            <p className="text-sm text-zinc-600">
+              AI-звіт підсумує твій тиждень — навчання, здоров'я, фінанси.
+            </p>
           )}
         </div>
       </div>

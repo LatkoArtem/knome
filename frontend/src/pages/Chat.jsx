@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { useStore } from '../store'
 import { useChat } from '../hooks/useChat'
 
@@ -23,7 +24,7 @@ function Message({ msg }) {
           </div>
         )}
         <div
-          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
             isUser
               ? 'bg-blue-600 text-white rounded-br-md ml-auto'
               : msg.trigger_type
@@ -31,7 +32,24 @@ function Message({ msg }) {
                 : 'bg-zinc-900 border border-white/[0.06] text-zinc-200 rounded-bl-md'
           }`}
         >
-          {msg.content}
+          {isUser ? (
+            <span className="whitespace-pre-wrap">{msg.content}</span>
+          ) : (
+            <ReactMarkdown
+              className="prose prose-sm prose-invert max-w-none
+                [&>p]:mb-2 [&>p:last-child]:mb-0
+                [&>ul]:mb-2 [&>ul]:pl-4 [&>li]:mb-0.5
+                [&>ol]:mb-2 [&>ol]:pl-4
+                [&>strong]:font-semibold [&>strong]:text-zinc-100
+                [&>code]:bg-zinc-800 [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:rounded [&>code]:text-blue-300 [&>code]:text-xs
+                [&>pre]:bg-zinc-800 [&>pre]:rounded-lg [&>pre]:p-3 [&>pre]:mb-2 [&>pre]:overflow-x-auto
+                [&>h1]:text-base [&>h1]:font-bold [&>h1]:mb-1
+                [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1
+                [&>h3]:text-sm [&>h3]:font-medium [&>h3]:mb-1"
+            >
+              {msg.content}
+            </ReactMarkdown>
+          )}
         </div>
         <div className={`mt-1 text-[10px] text-zinc-600 ${isUser ? 'text-right' : 'text-left'}`}>
           {msg.ts ? new Date(msg.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) : ''}

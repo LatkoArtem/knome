@@ -53,10 +53,16 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
         parsed = _parse_amount_currency(text)
         if parsed:
             amount, currency = parsed
-            desc = re.sub(r"\d+(?:[.,]\d+)?\s*(грн|uah|usd|\$|€|eur|дол|євро)", "", text, flags=re.IGNORECASE).strip()
-            for kw in _SPEND_KW:
-                desc = desc.replace(kw, "")
-            desc = desc.strip(" ,.-на") or user_message
+            # Extract meaningful description from original message (not lowercased)
+            desc_raw = re.sub(
+                r"^(витратив|витратила|купив|купила|заплатив|заплатила|spent|paid|bought)\s*",
+                "", user_message, flags=re.IGNORECASE,
+            )
+            desc_raw = re.sub(
+                r"\s*\d+(?:[.,]\d+)?\s*(грн|uah|usd|\$|€|eur|дол|євро)\s*",
+                " ", desc_raw, flags=re.IGNORECASE,
+            ).strip(" ,.-")
+            desc = desc_raw if len(desc_raw) > 2 else user_message
             category, _, _ = await classify(desc, amount)
             add_transaction(user_id, amount, currency, category, desc)
             fallback = f"Записав: {amount} {currency} — {category}. Баланс оновлено!"

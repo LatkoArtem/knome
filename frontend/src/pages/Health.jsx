@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
@@ -127,6 +128,33 @@ export default function Health() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Trend chart */}
+        {data?.recent_checkins?.length > 1 && (
+          <div className="card p-5 sm:col-span-2">
+            <p className="section-label mb-4">Тренд настрою і сну</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <LineChart
+                data={[...data.recent_checkins].reverse().map(c => ({
+                  date: c.date?.slice(5, 10),
+                  mood: c.mood,
+                  sleep: c.sleep_hours,
+                }))}
+                margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+              >
+                <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 10]} tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: '#a1a1aa' }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, color: '#71717a', paddingTop: 8 }} />
+                <Line type="monotone" dataKey="mood" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: '#f43f5e' }} name="Настрій" />
+                <Line type="monotone" dataKey="sleep" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} name="Сон (год)" />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         )}
 
