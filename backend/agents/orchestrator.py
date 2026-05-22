@@ -5,6 +5,8 @@ import agents.learning as learning_agent
 import agents.financial as financial_agent
 import agents.health as health_agent
 from graph.queries import commit_updates, get_user_context
+from llm.client import llm_respond
+from llm.prompts import GENERAL_SYSTEM
 
 
 class KnomeState(TypedDict):
@@ -48,33 +50,37 @@ async def classify_intent(state: KnomeState) -> dict:
 
 
 async def run_learning(state: KnomeState) -> dict:
-    response, updates = learning_agent.process(state["user_message"], state["user_id"])
+    response, updates = await learning_agent.process(state["user_message"], state["user_id"])
     return {"response": response, "graph_updates": updates}
 
 
 async def run_finance(state: KnomeState) -> dict:
-    response, updates = financial_agent.process(state["user_message"], state["user_id"])
+    response, updates = await financial_agent.process(state["user_message"], state["user_id"])
     return {"response": response, "graph_updates": updates}
 
 
 async def run_health(state: KnomeState) -> dict:
-    response, updates = health_agent.process(state["user_message"], state["user_id"])
+    response, updates = await health_agent.process(state["user_message"], state["user_id"])
     return {"response": response, "graph_updates": updates}
 
 
 async def run_general(state: KnomeState) -> dict:
     ctx = state.get("graph_context", {})
     user_name = ctx.get("user", {}).get("name", "")
-    greeting = f"{user_name}, " if user_name else ""
-    return {
-        "response": (
+
+    user_ctx = f"User name: {user_name}." if user_name else ""
+    prompt = f"{user_ctx}\n\nUser message: {state['user_message']}"
+    response = await llm_respond(GENERAL_SYSTEM, prompt)
+
+    if not response:
+        greeting = f"{user_name}, " if user_name else ""
+        response = (
             f"{greeting}я можу допомогти з:\n"
             "Навчання — «позаймався Python 30 хвилин»\n"
             "Фінанси — «витратив 200 грн на каву»\n"
             "Здоров'я — «спав 7 годин, настрій 8»"
-        ),
-        "graph_updates": [],
-    }
+        )
+    return {"response": response, "graph_updates": []}
 
 
 async def apply_updates(state: KnomeState) -> dict:

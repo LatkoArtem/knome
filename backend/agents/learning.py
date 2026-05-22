@@ -5,6 +5,8 @@ from graph.queries import (
     get_learning_goals,
     get_learning_sessions,
 )
+from llm.client import llm_respond
+from llm.prompts import LEARNING_SYSTEM
 
 _SESSION_KW = ["позаймав", "вивч", "пройш", "прочитав", "studied", "learned", "read", "practice"]
 _GOAL_KW = ["хочу вивчити", "додай ціль", "ціль навч", "want to learn", "new goal"]
@@ -29,7 +31,7 @@ def _extract_topic(text: str) -> str:
     return ""
 
 
-def process(user_message: str, user_id: str) -> tuple[str, list]:
+async def process(user_message: str, user_id: str) -> tuple[str, list]:
     text = user_message.lower()
 
     # Log session
@@ -37,7 +39,11 @@ def process(user_message: str, user_id: str) -> tuple[str, list]:
     if minutes and any(w in text for w in _SESSION_KW):
         topic = _extract_topic(text)
         add_learning_session(user_id, minutes, topic)
-        return f"Записав: {minutes} хв навчання. Так тримати!", []
+        fallback = f"Записав: {minutes} хв навчання. Так тримати!"
+        topic_str = f" по темі «{topic}»" if topic else ""
+        ctx = f"User logged a learning session: {minutes} minutes{topic_str}. Session saved to knowledge graph."
+        response = await llm_respond(LEARNING_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        return response or fallback, []
 
     # Add goal
     if any(text.startswith(kw) or kw in text for kw in _GOAL_KW):
@@ -47,8 +53,12 @@ def process(user_message: str, user_id: str) -> tuple[str, list]:
                 break
         else:
             desc = text.capitalize()
-        add_goal(user_id, "learning", desc or "Нова ціль")
-        return f"Ціль додано: «{desc}». Вперед!", []
+        desc = desc or "Нова ціль"
+        add_goal(user_id, "learning", desc)
+        fallback = f"Ціль додано: «{desc}». Вперед!"
+        ctx = f"User added a new learning goal: «{desc}». Goal saved."
+        response = await llm_respond(LEARNING_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        return response or fallback, []
 
     # Show progress
     if any(w in text for w in _PROGRESS_KW):
@@ -62,14 +72,23 @@ def process(user_message: str, user_id: str) -> tuple[str, list]:
             else "Цілей немає — скажи «хочу вивчити ...»"
         )
         time_str = f"{hours}г {mins}хв" if hours else f"{mins}хв"
-        return (
+        fallback = (
             f"Навчання:\n\nЦілі:\n{goals_str}\n\n"
             f"За останній тиждень: {time_str} ({len(sessions)} сесій)"
-        ), []
+        )
+        ctx = (
+            f"User asked for their learning summary.\n"
+            f"Goals: {goals_str}\n"
+            f"Last 7 days: {time_str} across {len(sessions)} sessions."
+        )
+        response = await llm_respond(LEARNING_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        return response or fallback, []
 
-    return (
+    fallback = (
         "Розкажи про навчання! Наприклад:\n"
         "• «Позаймався Python 45 хвилин»\n"
         "• «Хочу вивчити React»\n"
         "• «Яке моє навчання?»"
-    ), []
+    )
+    response = await llm_respond(LEARNING_SYSTEM, f"User message: {user_message}")
+    return response or fallback, []

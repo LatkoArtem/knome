@@ -1,5 +1,7 @@
 import re
 from graph.queries import add_transaction, get_recent_transactions
+from llm.client import llm_respond
+from llm.prompts import FINANCE_SYSTEM
 
 _SPEND_KW = ["витрат", "куп", "заплат", "paid", "spent", "bought", "buy"]
 _SUMMARY_KW = ["скільки", "витрати", "бюджет", "статистик", "spending", "budget", "how much", "summary"]
@@ -50,7 +52,7 @@ def _parse_amount_currency(text: str) -> tuple[float, str] | None:
     return None
 
 
-def process(user_message: str, user_id: str) -> tuple[str, list]:
+async def process(user_message: str, user_id: str) -> tuple[str, list]:
     text = user_message.lower()
 
     # Log transaction
@@ -59,31 +61,46 @@ def process(user_message: str, user_id: str) -> tuple[str, list]:
         if parsed:
             amount, currency = parsed
             category = _classify_category(text)
-            # Extract description — everything after amount/currency
             desc = re.sub(r"\d+(?:[.,]\d+)?\s*(грн|uah|usd|\$|€|eur|дол|євро)", "", text, flags=re.IGNORECASE).strip()
             for kw in _SPEND_KW:
                 desc = desc.replace(kw, "")
             desc = desc.strip(" ,.-на") or category
             add_transaction(user_id, amount, currency, category, desc)
-            return f"Записав: {amount} {currency} — {category}. Баланс оновлено!", []
-        return "Вкажи суму. Наприклад: «Витратив 200 грн на каву»", []
+            fallback = f"Записав: {amount} {currency} — {category}. Баланс оновлено!"
+            ctx = f"User logged expense: {amount} {currency} on category «{category}» ({desc}). Transaction saved."
+            response = await llm_respond(FINANCE_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+            return response or fallback, []
+        fallback = "Вкажи суму. Наприклад: «Витратив 200 грн на каву»"
+        response = await llm_respond(FINANCE_SYSTEM, f"User wants to log an expense but didn't provide an amount.\n\nUser message: {user_message}")
+        return response or fallback, []
 
     # Show summary
     if any(w in text for w in _SUMMARY_KW):
         txs = get_recent_transactions(user_id, limit=20)
         if not txs:
-            return "Витрат ще не записано. Спробуй: «Витратив 500 грн на їжу»", []
+            fallback = "Витрат ще не записано. Спробуй: «Витратив 500 грн на їжу»"
+            response = await llm_respond(FINANCE_SYSTEM, f"User asked for spending summary but no transactions recorded yet.\n\nUser message: {user_message}")
+            return response or fallback, []
         by_cat: dict[str, float] = {}
         for tx in txs:
             by_cat[tx["category"]] = by_cat.get(tx["category"], 0) + tx["amount"]
         total = sum(by_cat.values())
         currency = txs[0]["currency"] if txs else "UAH"
         lines = "\n".join(f"• {cat}: {amt:.0f}" for cat, amt in sorted(by_cat.items(), key=lambda x: -x[1]))
-        return f"Останні витрати (сума: {total:.0f} {currency}):\n{lines}", []
+        fallback = f"Останні витрати (сума: {total:.0f} {currency}):\n{lines}"
+        ctx = (
+            f"User asked for spending summary.\n"
+            f"Total: {total:.0f} {currency} across {len(txs)} transactions.\n"
+            f"By category:\n{lines}"
+        )
+        response = await llm_respond(FINANCE_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        return response or fallback, []
 
-    return (
+    fallback = (
         "Можу записати витрату або показати статистику. Наприклад:\n"
         "• «Витратив 500 грн на їжу»\n"
         "• «Заплатив $20 за Spotify»\n"
         "• «Які мої витрати?»"
-    ), []
+    )
+    response = await llm_respond(FINANCE_SYSTEM, f"User message: {user_message}")
+    return response or fallback, []
