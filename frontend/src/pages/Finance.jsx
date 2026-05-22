@@ -4,7 +4,27 @@ import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
 
-const CATEGORIES = ['їжа', 'transport', 'розваги', 'навчання', "здоров'я", 'комунальні', 'інше']
+const CATEGORIES = ['авто', 'їжа', 'transport', 'розваги', 'навчання', "здоров'я", 'комунальні', 'одяг', 'інше']
+
+// Client-side keyword hints for instant feedback (mirrors backend rules, subset)
+const CAT_HINTS = [
+  { cat: "їжа",       words: ["кава","pizza","піца","ресторан","кафе","продукти","atb","silpo","delivery","glovo","sushi","burger","їжа","обід"] },
+  { cat: "transport", words: ["uber","bolt","uklon","таксі","метро","бензин","bus","parking","паркінг","поїзд"] },
+  { cat: "розваги",   words: ["netflix","spotify","kino","кіно","concert","концерт","steam","game","бар","bar","пиво"] },
+  { cat: "навчання",  words: ["курс","course","udemy","coursera","книга","book","репетитор"] },
+  { cat: "здоров'я",  words: ["аптека","pharmacy","gym","фітнес","лікар","doctor","ліки"] },
+  { cat: "комунальні",words: ["інтернет","internet","телефон","оренда","rent","газ","електрика","kyivstar","vodafone"] },
+  { cat: "одяг",      words: ["одяг","zara","hm","uniqlo","взуття","shoes","куртка","футболка"] },
+]
+
+function guessCategory(desc) {
+  if (!desc) return null
+  const low = desc.toLowerCase()
+  for (const { cat, words } of CAT_HINTS) {
+    if (words.some(w => low.includes(w))) return cat
+  }
+  return null
+}
 const CURRENCIES = ['UAH', 'USD', 'EUR']
 
 const CAT_COLORS = {
@@ -27,6 +47,7 @@ export default function Finance() {
   const [category, setCategory] = useState('їжа')
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
+  const [categoryHint, setCategoryHint] = useState(null)
 
   const load = () => {
     if (!userId) return
@@ -38,18 +59,26 @@ export default function Finance() {
 
   useEffect(() => { load() }, [userId])
 
+  const handleDescriptionChange = (val) => {
+    setDescription(val)
+    if (category === 'авто') setCategoryHint(guessCategory(val))
+  }
+
   const save = async () => {
     if (!amount || saving) return
     setSaving(true)
+    const bodyCategory = category === 'авто' ? null : category
     await fetch(`${API}/finance/transaction/${userId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: parseFloat(amount), currency, category, description }),
+      body: JSON.stringify({ amount: parseFloat(amount), currency, category: bodyCategory, description }),
     })
     setSaving(false)
     setShowForm(false)
     setAmount('')
     setDescription('')
+    setCategory('авто')
+    setCategoryHint(null)
     load()
   }
 
@@ -77,13 +106,20 @@ export default function Finance() {
                 {CURRENCIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
-            <select value={category} onChange={e => setCategory(e.target.value)}
+            <select value={category} onChange={e => { setCategory(e.target.value); setCategoryHint(null) }}
               className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm">
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              {CATEGORIES.map(c => <option key={c}>{c === 'авто' ? '✨ Авто (визначити автоматично)' : c}</option>)}
             </select>
-            <input type="text" placeholder={t('finance.description_label')} value={description}
-              onChange={e => setDescription(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm" />
+            <div>
+              <input type="text" placeholder={t('finance.description_label')} value={description}
+                onChange={e => handleDescriptionChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm" />
+              {category === 'авто' && categoryHint && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 ml-1">
+                  ✓ Схоже на: <strong>{categoryHint}</strong>
+                </p>
+              )}
+            </div>
             <div className="flex gap-2">
               <button onClick={save} disabled={saving}
                 className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">

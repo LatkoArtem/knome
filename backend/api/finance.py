@@ -1,6 +1,9 @@
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
 from graph.queries import get_recent_transactions, add_transaction, user_exists
+from ml.classifier import classify, classify_rule, ALL_CATEGORIES
 
 router = APIRouter()
 
@@ -8,8 +11,13 @@ router = APIRouter()
 class AddTransactionRequest(BaseModel):
     amount: float
     currency: str = "UAH"
-    category: str = "інше"
+    category: Optional[str] = None   # None / "авто" → auto-classify from description
     description: str = ""
+
+
+class ClassifyRequest(BaseModel):
+    description: str
+    amount: float = 0.0
 
 
 @router.get("/finance/summary/{user_id}")
@@ -33,5 +41,35 @@ async def finance_summary(user_id: str):
 async def log_transaction(user_id: str, body: AddTransactionRequest):
     if not user_exists(user_id):
         raise HTTPException(status_code=404, detail="User not found")
-    tid = add_transaction(user_id, body.amount, body.currency, body.category, body.description)
-    return {"transaction_id": tid, "amount": body.amount, "currency": body.currency}
+
+    auto_classified = False
+    category = body.category
+
+    if not category or category.strip() in ("", "авто", "auto"):
+        category, confidence, source = await classify(body.description, body.amount)
+        auto_classified = True
+    else:
+        _, confidence, source = classify_rule(category), 1.0, "manual"
+        confidence = 1.0
+
+    tid = add_transaction(user_id, body.amount, body.currency, category, body.description)
+    return {
+        "transaction_id": tid,
+        "amount": body.amount,
+        "currency": body.currency,
+        "category": category,
+        "auto_classified": auto_classified,
+        "confidence": confidence,
+    }
+
+
+@router.post("/finance/classify")
+async def classify_transaction(body: ClassifyRequest):
+    """Preview endpoint — returns predicted category without saving."""
+    category, confidence, source = await classify(body.description, body.amount)
+    return {
+        "category": category,
+        "confidence": confidence,
+        "source": source,
+        "all_categories": ALL_CATEGORIES,
+    }

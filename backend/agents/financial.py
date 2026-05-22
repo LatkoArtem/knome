@@ -3,32 +3,16 @@ from graph.queries import add_transaction, get_recent_transactions
 from llm.client import llm_respond
 from llm.prompts import FINANCE_SYSTEM
 from llm.context import format_context
+from ml.classifier import classify
 
 _SPEND_KW = ["витрат", "куп", "заплат", "paid", "spent", "bought", "buy"]
 _SUMMARY_KW = ["скільки", "витрати", "бюджет", "статистик", "spending", "budget", "how much", "summary"]
-
-_CATEGORY_MAP = {
-    "їжа": ["їжа", "кафе", "ресторан", "кофе", "кава", "food", "cafe", "coffee", "pizza", "lunch", "dinner"],
-    "transport": ["метро", "таксі", "uber", "bolt", "bus", "транспорт", "бензин", "transport"],
-    "розваги": ["кіно", "cinema", "concert", "game", "розваги", "entertainment", "netflix", "spotify"],
-    "навчання": ["курс", "книга", "udemy", "course", "book", "learning"],
-    "здоров'я": ["аптека", "лікар", "gym", "спорт", "health", "pharmacy", "doctor"],
-    "комунальні": ["комунальні", "інтернет", "internet", "phone", "utilities"],
-}
 
 _CURRENCY_MAP = {
     "грн": "UAH", "uah": "UAH", "₴": "UAH",
     "usd": "USD", "$": "USD", "дол": "USD",
     "eur": "EUR", "€": "EUR", "євро": "EUR",
 }
-
-
-def _classify_category(text: str) -> str:
-    text = text.lower()
-    for cat, keywords in _CATEGORY_MAP.items():
-        if any(kw in text for kw in keywords):
-            return cat
-    return "інше"
 
 
 def _parse_amount_currency(text: str) -> tuple[float, str] | None:
@@ -69,11 +53,11 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
         parsed = _parse_amount_currency(text)
         if parsed:
             amount, currency = parsed
-            category = _classify_category(text)
             desc = re.sub(r"\d+(?:[.,]\d+)?\s*(грн|uah|usd|\$|€|eur|дол|євро)", "", text, flags=re.IGNORECASE).strip()
             for kw in _SPEND_KW:
                 desc = desc.replace(kw, "")
-            desc = desc.strip(" ,.-на") or category
+            desc = desc.strip(" ,.-на") or user_message
+            category, _, _ = await classify(desc, amount)
             add_transaction(user_id, amount, currency, category, desc)
             fallback = f"Записав: {amount} {currency} — {category}. Баланс оновлено!"
             action = f"Logged expense: {amount} {currency} on «{category}» ({desc}). Saved."
