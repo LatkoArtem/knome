@@ -24,6 +24,7 @@ def _get_client(model: str) -> ChatOllama:
             base_url=_BASE_URL,
             temperature=0.7,
             num_predict=256,
+            timeout=10,
         )
     return _clients[model]
 
