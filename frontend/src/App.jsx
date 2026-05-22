@@ -1,0 +1,59 @@
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStore } from './store'
+import NavBar from './components/NavBar'
+import Chat from './pages/Chat'
+import Onboarding from './pages/Onboarding'
+import Dashboard from './pages/Dashboard'
+import Learning from './pages/Learning'
+import Finance from './pages/Finance'
+import Health from './pages/Health'
+
+function PrivateRoute({ children }) {
+  const userId = useStore((s) => s.userId)
+  return userId ? children : <Navigate to="/onboarding" replace />
+}
+
+function LayoutWithNav({ children }) {
+  const location = useLocation()
+  const showNav = location.pathname !== '/onboarding'
+  return (
+    <>
+      {children}
+      {showNav && <NavBar />}
+    </>
+  )
+}
+
+function LanguageSync() {
+  const { i18n } = useTranslation()
+  const language = useStore((s) => s.language)
+  useEffect(() => { i18n.changeLanguage(language) }, [language])
+  return null
+}
+
+export default function App() {
+  const theme = useStore((s) => s.theme)
+
+  return (
+    <div className={theme === 'dark' ? 'dark' : ''}>
+      <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+        <BrowserRouter>
+          <LanguageSync />
+          <LayoutWithNav>
+            <Routes>
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+              <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/learning" element={<PrivateRoute><Learning /></PrivateRoute>} />
+              <Route path="/finance" element={<PrivateRoute><Finance /></PrivateRoute>} />
+              <Route path="/health" element={<PrivateRoute><Health /></PrivateRoute>} />
+              <Route path="/" element={<Navigate to="/chat" replace />} />
+            </Routes>
+          </LayoutWithNav>
+        </BrowserRouter>
+      </div>
+    </div>
+  )
+}

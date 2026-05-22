@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# Environment
+.env
+.env.local
+!.env.example
+
+# Data (Knowledge Graph + SQLite)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# ML models
+*.pt
+*.pth
+*.onnx
+models/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs & temp
+*.log
+*.tmp
+
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Frontend env (Vite)
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local

@@ -1,0 +1,74 @@
+{
+  "chat": {
+    "placeholder": "Type a message...",
+    "send": "Send"
+  },
+  "nav": {
+    "chat": "Chat",
+    "dashboard": "Dashboard",
+    "learning": "Learning",
+    "finance": "Finance",
+    "health": "Health",
+    "settings": "Settings"
+  },
+  "onboarding": {
+    "title": "Hi! I'm Knome.",
+    "subtitle": "Your personal AI agent that knows you",
+    "start": "Start onboarding"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "learning": "Learning",
+    "finance": "Finance",
+    "health": "Health",
+    "sessions": "sessions this week",
+    "minutes": "min",
+    "goals": "goals",
+    "spent": "Spent",
+    "transactions": "transactions",
+    "mood": "Mood",
+    "sleep": "Sleep",
+    "checkins": "check-ins",
+    "no_data": "No data yet"
+  },
+  "learning": {
+    "title": "Learning",
+    "goals_title": "My Goals",
+    "sessions_title": "Recent Sessions",
+    "add_session": "Log Session",
+    "add_goal": "New Goal",
+    "duration_label": "Duration (min)",
+    "topic_label": "Topic",
+    "goal_label": "Goal description",
+    "save": "Save",
+    "cancel": "Cancel",
+    "no_goals": "No goals yet. Add your first!",
+    "no_sessions": "No sessions yet."
+  },
+  "finance": {
+    "title": "Finance",
+    "recent_title": "Recent Expenses",
+    "add_transaction": "Add Expense",
+    "amount_label": "Amount",
+    "currency_label": "Currency",
+    "category_label": "Category",
+    "description_label": "Description",
+    "save": "Save",
+    "cancel": "Cancel",
+    "no_transactions": "No expenses yet.",
+    "total": "Total"
+  },
+  "health": {
+    "title": "Health",
+    "checkin_title": "Daily Check-in",
+    "sleep_label": "Sleep (hours)",
+    "mood_label": "Mood (1-10)",
+    "energy_label": "Energy (1-10)",
+    "notes_label": "Notes",
+    "save": "Save Check-in",
+    "history_title": "Recent Records",
+    "no_checkins": "No check-ins yet.",
+    "avg_mood": "Avg. Mood",
+    "avg_sleep": "Avg. Sleep"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "chat": {
+    "placeholder": "Напиши повідомлення...",
+    "send": "Надіслати"
+  },
+  "nav": {
+    "chat": "Чат",
+    "dashboard": "Дашборд",
+    "learning": "Навчання",
+    "finance": "Фінанси",
+    "health": "Здоров'я",
+    "settings": "Налаштування"
+  },
+  "onboarding": {
+    "title": "Привіт! Я Knome.",
+    "subtitle": "Персональний AI агент який знає тебе",
+    "start": "Почати знайомство"
+  },
+  "dashboard": {
+    "title": "Дашборд",
+    "learning": "Навчання",
+    "finance": "Фінанси",
+    "health": "Здоров'я",
+    "sessions": "сесій цього тижня",
+    "minutes": "хв",
+    "goals": "цілі",
+    "spent": "Витрачено",
+    "transactions": "транзакцій",
+    "mood": "Настрій",
+    "sleep": "Сон",
+    "checkins": "check-in",
+    "no_data": "Даних поки немає"
+  },
+  "learning": {
+    "title": "Навчання",
+    "goals_title": "Мої цілі",
+    "sessions_title": "Останні сесії",
+    "add_session": "Додати сесію",
+    "add_goal": "Нова ціль",
+    "duration_label": "Тривалість (хв)",
+    "topic_label": "Тема",
+    "goal_label": "Опис цілі",
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "no_goals": "Цілей немає. Додай першу!",
+    "no_sessions": "Сесій ще немає."
+  },
+  "finance": {
+    "title": "Фінанси",
+    "recent_title": "Останні витрати",
+    "add_transaction": "Додати витрату",
+    "amount_label": "Сума",
+    "currency_label": "Валюта",
+    "category_label": "Категорія",
+    "description_label": "Опис",
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "no_transactions": "Витрат ще немає.",
+    "total": "Всього"
+  },
+  "health": {
+    "title": "Здоров'я",
+    "checkin_title": "Щоденний check-in",
+    "sleep_label": "Сон (годин)",
+    "mood_label": "Настрій (1-10)",
+    "energy_label": "Енергія (1-10)",
+    "notes_label": "Нотатки",
+    "save": "Зберегти check-in",
+    "history_title": "Останні записи",
+    "no_checkins": "Check-in ще не записувався.",
+    "avg_mood": "Середній настрій",
+    "avg_sleep": "Середній сон"
+  }
+}
