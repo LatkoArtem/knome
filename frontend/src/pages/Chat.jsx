@@ -36,16 +36,23 @@ function Message({ msg }) {
             <span className="whitespace-pre-wrap">{msg.content}</span>
           ) : (
             <ReactMarkdown
-              className="prose prose-sm prose-invert max-w-none
-                [&>p]:mb-2 [&>p:last-child]:mb-0
-                [&>ul]:mb-2 [&>ul]:pl-4 [&>li]:mb-0.5
-                [&>ol]:mb-2 [&>ol]:pl-4
-                [&>strong]:font-semibold [&>strong]:text-zinc-100
-                [&>code]:bg-zinc-800 [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:rounded [&>code]:text-blue-300 [&>code]:text-xs
-                [&>pre]:bg-zinc-800 [&>pre]:rounded-lg [&>pre]:p-3 [&>pre]:mb-2 [&>pre]:overflow-x-auto
-                [&>h1]:text-base [&>h1]:font-bold [&>h1]:mb-1
-                [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1
-                [&>h3]:text-sm [&>h3]:font-medium [&>h3]:mb-1"
+              components={{
+                p:      ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold text-zinc-100">{children}</strong>,
+                em:     ({ children }) => <em className="italic text-zinc-300">{children}</em>,
+                ul:     ({ children }) => <ul className="mb-2 pl-4 space-y-0.5 list-disc marker:text-zinc-600">{children}</ul>,
+                ol:     ({ children }) => <ol className="mb-2 pl-4 space-y-0.5 list-decimal marker:text-zinc-600">{children}</ol>,
+                li:     ({ children }) => <li className="leading-relaxed">{children}</li>,
+                code:   ({ children, inline }) => inline
+                  ? <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-blue-300 text-xs font-mono">{children}</code>
+                  : <code className="block bg-zinc-800 rounded-lg p-3 mb-2 text-xs font-mono overflow-x-auto text-zinc-200">{children}</code>,
+                pre:    ({ children }) => <>{children}</>,
+                h1:     ({ children }) => <h1 className="text-base font-bold mb-1 text-zinc-100">{children}</h1>,
+                h2:     ({ children }) => <h2 className="text-sm font-semibold mb-1 text-zinc-100">{children}</h2>,
+                h3:     ({ children }) => <h3 className="text-sm font-medium mb-1 text-zinc-200">{children}</h3>,
+                a:      ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">{children}</a>,
+                blockquote: ({ children }) => <blockquote className="border-l-2 border-zinc-700 pl-3 text-zinc-400 italic mb-2">{children}</blockquote>,
+              }}
             >
               {msg.content}
             </ReactMarkdown>
