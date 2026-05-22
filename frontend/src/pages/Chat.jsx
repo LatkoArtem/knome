@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { Send, Languages } from 'lucide-react'
 import { useStore } from '../store'
 import { useChat } from '../hooks/useChat'
+import { IllustrationChat } from '../components/Illustrations'
 
 function Message({ msg }) {
   const isUser = msg.role === 'user'
@@ -88,28 +90,32 @@ function TypingDots() {
   )
 }
 
-function EmptyState() {
+const SUGGESTIONS = [
+  { color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', text: 'Позаймався Python 30 хвилин' },
+  { color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', text: 'Витратив 250 грн на продукти в АТБ' },
+  { color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', text: 'Спав 7 годин, настрій 8/10' },
+]
+
+function EmptyState({ onSuggestion }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-6 px-4 text-center animate-fade-in">
-      <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center">
-        <svg className="w-6 h-6 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-        </svg>
-      </div>
+    <div className="flex flex-col items-center justify-center h-full gap-5 px-4 text-center animate-fade-in">
+      <IllustrationChat />
       <div>
-        <h2 className="text-lg font-semibold text-zinc-100 mb-1">Привіт! Я Knome</h2>
-        <p className="text-sm text-zinc-500 max-w-xs">Твій персональний AI-агент для навчання, фінансів і здоров'я</p>
+        <h2 className="text-xl font-semibold text-zinc-100 tracking-tight mb-1.5">Привіт! Я Knome</h2>
+        <p className="text-sm text-zinc-500 max-w-sm leading-relaxed">
+          Твій особистий AI-агент. Розкажи про витрати, самопочуття або навчання — я все запам'ятаю.
+        </p>
       </div>
-      <div className="flex flex-col gap-2 w-full max-w-xs">
-        {[
-          { icon: '📚', text: 'Позаймався Python 30 хвилин' },
-          { icon: '💰', text: 'Витратив 250 грн на продукти' },
-          { icon: '❤️', text: 'Спав 7 годин, настрій 8/10' },
-        ].map(({ icon, text }) => (
-          <div key={text} className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-zinc-900 border border-white/[0.06] text-sm text-zinc-400 text-left hover:bg-zinc-800 hover:text-zinc-200 transition-colors cursor-default">
-            <span>{icon}</span>
-            <span className="italic">«{text}»</span>
-          </div>
+      <div className="flex flex-col gap-2 w-full max-w-sm">
+        <p className="text-xs text-zinc-600 mb-1">Спробуй написати:</p>
+        {SUGGESTIONS.map(({ color, text }) => (
+          <button
+            key={text}
+            onClick={() => onSuggestion(text)}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm text-left hover:brightness-125 transition-all duration-150 ${color}`}
+          >
+            <span className="italic text-current opacity-80">«{text}»</span>
+          </button>
         ))}
       </div>
     </div>
@@ -131,9 +137,10 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingContent])
 
-  const handleSend = () => {
-    if (!input.trim()) return
-    send(input.trim())
+  const handleSend = (text) => {
+    const msg = (typeof text === 'string' ? text : input).trim()
+    if (!msg) return
+    send(msg)
     setInput('')
     inputRef.current?.focus()
   }
@@ -148,16 +155,17 @@ export default function Chat() {
         </div>
         <button
           onClick={() => setLanguage(language === 'ua' ? 'en' : 'ua')}
-          className="btn-ghost text-xs px-2.5 py-1.5"
+          className="btn-ghost text-xs px-2.5 py-1.5 gap-1"
         >
-          {language === 'ua' ? '🇬🇧 EN' : '🇺🇦 UA'}
+          <Languages className="w-3.5 h-3.5" />
+          {language === 'ua' ? 'EN' : 'UA'}
         </button>
       </header>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-          {messages.length === 0 && !streamingContent && !isLoading && <EmptyState />}
+          {messages.length === 0 && !streamingContent && !isLoading && <EmptyState onSuggestion={handleSend} />}
 
           {messages.map((msg, i) => <Message key={i} msg={msg} />)}
 
@@ -201,13 +209,11 @@ export default function Chat() {
               }}
             />
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || isLoading}
               className="shrink-0 w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors mb-0.5"
             >
-              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
+              <Send className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
           <p className="text-center text-[10px] text-zinc-700 mt-2">Enter — надіслати · Shift+Enter — новий рядок</p>

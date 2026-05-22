@@ -192,6 +192,7 @@ def init_schema() -> None:
 
     # Edge tables
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_GOAL (FROM User TO Goal)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_BUDGET (FROM User TO Budget)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_REVIEW (FROM User TO TopicReview)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_SKILL (FROM User TO Skill)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_HABIT (FROM User TO Habit)")

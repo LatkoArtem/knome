@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { BookOpen, Wallet, Heart, Battery, TrendingUp, Brain, Sparkles, FileText, RefreshCw } from 'lucide-react'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
@@ -91,11 +92,15 @@ export default function Dashboard() {
       {/* Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-auto">
 
-        {/* Learning — spans 1 col */}
+        {/* Learning */}
         <StatCard to="/learning">
           <div className="flex items-center justify-between mb-3">
-            <span className="section-label">Навчання</span>
-            <span className="text-base">📚</span>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+              </div>
+              <span className="section-label">Навчання</span>
+            </div>
           </div>
           {learning ? (
             <>
@@ -109,11 +114,15 @@ export default function Dashboard() {
           )}
         </StatCard>
 
-        {/* Finance — spans 1 col */}
+        {/* Finance */}
         <StatCard to="/finance">
           <div className="flex items-center justify-between mb-3">
-            <span className="section-label">Фінанси</span>
-            <span className="text-base">💰</span>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+              <span className="section-label">Фінанси</span>
+            </div>
           </div>
           {finance ? (
             <>
@@ -134,11 +143,15 @@ export default function Dashboard() {
           )}
         </StatCard>
 
-        {/* Health — spans 1 col */}
+        {/* Health */}
         <StatCard to="/health" className="sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between mb-3">
-            <span className="section-label">Здоров'я</span>
-            <span className="text-base">❤️</span>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center">
+                <Heart className="w-3.5 h-3.5 text-rose-400" />
+              </div>
+              <span className="section-label">Здоров'я</span>
+            </div>
           </div>
           {health && (health.avg_mood_7d || health.avg_sleep_7d) ? (
             <>
@@ -163,7 +176,9 @@ export default function Dashboard() {
         <div className="card p-5 sm:col-span-2 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-base">🔋</span>
+              <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                <Battery className="w-3.5 h-3.5 text-amber-400" />
+              </div>
               <span className="section-label">Ризик вигорання</span>
             </div>
             {bs && (
@@ -187,7 +202,9 @@ export default function Dashboard() {
         {/* Forecast */}
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-base">📈</span>
+            <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+            </div>
             <span className="section-label">Прогноз витрат (30 дн.)</span>
           </div>
           {forecast && forecast.model !== 'insufficient_data' ? (
@@ -213,7 +230,9 @@ export default function Dashboard() {
         {/* Insights — full width */}
         <div className="card p-5 sm:col-span-2 lg:col-span-3">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-base">🧠</span>
+            <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
+              <Brain className="w-3.5 h-3.5 text-violet-400" />
+            </div>
             <span className="section-label">AI Інсайти</span>
           </div>
           {insightsLoading ? (
@@ -234,7 +253,9 @@ export default function Dashboard() {
         <div className="card p-5 sm:col-span-2 lg:col-span-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-base">📊</span>
+              <div className="w-7 h-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
+                <FileText className="w-3.5 h-3.5 text-sky-400" />
+              </div>
               <span className="section-label">Тижневий AI-звіт</span>
             </div>
             <button
@@ -244,7 +265,7 @@ export default function Dashboard() {
             >
               {reportLoading ? (
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 border-2 border-zinc-600 border-t-blue-500 rounded-full animate-spin" />
+                  <RefreshCw className="w-3 h-3 animate-spin" />
                   Генеруємо...
                 </span>
               ) : report ? '↻ Оновити' : '✨ Згенерувати'}

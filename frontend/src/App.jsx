@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from './store'
 import ErrorBoundary from './components/ErrorBoundary'
 import Sidebar from './components/Sidebar'
+import QuickAdd from './components/QuickAdd'
 import Chat from './pages/Chat'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
@@ -33,6 +34,7 @@ function Shell({ children }) {
       <main className="flex-1 lg:ml-[220px] min-h-screen overflow-y-auto pb-14 lg:pb-0">
         {children}
       </main>
+      <QuickAdd />
     </div>
   )
 }

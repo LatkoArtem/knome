@@ -407,6 +407,44 @@ def get_all_topic_reviews(user_id: str) -> list[dict]:
     ]
 
 
+def set_budget(user_id: str, category: str, limit_amount: float, period: str = "monthly") -> str:
+    conn = get_connection()
+    # Remove existing budget for this category
+    existing = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_BUDGET]->(b:Budget {category: $cat}) RETURN b.id",
+        {"uid": user_id, "cat": category})
+    for row in existing:
+        conn.execute("MATCH (b:Budget {id: $id}) DETACH DELETE b", {"id": row[0]})
+
+    bid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Budget {id: $id, category: $cat, limit_amount: $lim, period: $period})",
+        {"id": bid, "cat": category, "lim": limit_amount, "period": period},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (b:Budget {id: $bid}) CREATE (u)-[:HAS_BUDGET]->(b)",
+        {"uid": user_id, "bid": bid},
+    )
+    return bid
+
+
+def get_budgets(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_BUDGET]->(b:Budget) RETURN b.category, b.limit_amount, b.period",
+        {"uid": user_id})
+    return [{"category": r[0], "limit_amount": r[1], "period": r[2]} for r in rows]
+
+
+def delete_budget(user_id: str, category: str) -> None:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_BUDGET]->(b:Budget {category: $cat}) RETURN b.id",
+        {"uid": user_id, "cat": category})
+    for row in rows:
+        conn.execute("MATCH (b:Budget {id: $id}) DETACH DELETE b", {"id": row[0]})
+
+
 def get_recent_food_entries(user_id: str, limit: int = 10) -> list[dict]:
     conn = get_connection()
     rows = _query_all(

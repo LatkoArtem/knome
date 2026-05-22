@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { Plus, Wallet, Target, Trash2 } from 'lucide-react'
 import { useStore } from '../store'
+import { IllustrationFinance } from '../components/Illustrations'
 
 const API = 'http://localhost:8000/api'
 
@@ -170,6 +172,106 @@ function SpendingChart({ transactions, currency }) {
   )
 }
 
+const BUDGET_CATS = ['їжа', 'transport', 'розваги', 'навчання', "здоров'я", 'комунальні', 'одяг', 'інше']
+
+function BudgetSection({ userId, currency }) {
+  const [budgets, setBudgets] = useState([])
+  const [showForm, setShowForm] = useState(false)
+  const [cat, setCat] = useState('їжа')
+  const [limit, setLimit] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const load = () => {
+    if (!userId) return
+    fetch(`${API}/finance/budgets/${userId}`).then(r => r.ok ? r.json() : []).then(setBudgets).catch(() => {})
+  }
+  useEffect(() => { load() }, [userId])
+
+  const save = async () => {
+    if (!limit || saving) return
+    setSaving(true)
+    await fetch(`${API}/finance/budget/${userId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: cat, limit_amount: parseFloat(limit) }),
+    })
+    setSaving(false); setShowForm(false); setLimit(''); load()
+  }
+
+  const remove = async (category) => {
+    await fetch(`${API}/finance/budget/${userId}/${encodeURIComponent(category)}`, { method: 'DELETE' })
+    load()
+  }
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded bg-blue-500/15 flex items-center justify-center">
+            <Target className="w-3 h-3 text-blue-400" />
+          </div>
+          <p className="section-label">Бюджет на місяць</p>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className="btn-ghost text-xs px-2 py-1">
+          <Plus className="w-3.5 h-3.5" /> Ліміт
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="px-5 py-4 border-b border-white/[0.04] bg-zinc-800/20 animate-fade-in">
+          <div className="flex gap-2">
+            <select value={cat} onChange={e => setCat(e.target.value)} className="input flex-1 bg-zinc-900 text-sm">
+              {BUDGET_CATS.map(c => <option key={c}>{c}</option>)}
+            </select>
+            <input type="number" min="0" placeholder="Ліміт" value={limit}
+              onChange={e => setLimit(e.target.value)}
+              className="input w-28 text-sm" />
+            <button onClick={save} disabled={saving || !limit} className="btn-primary text-xs px-3">
+              {saving ? '...' : 'OK'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {budgets.length > 0 ? (
+        <ul className="divide-y divide-white/[0.04]">
+          {budgets.map(b => {
+            const pct = Math.min(b.pct, 100)
+            const over = b.pct > 100
+            return (
+              <li key={b.category} className="px-5 py-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className={`badge border ${CAT_COLOR[b.category] || CAT_COLOR['інше']}`}>{b.category}</span>
+                    {over && <span className="text-xs text-red-400 font-medium">Перевищено!</span>}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={over ? 'text-red-400 font-semibold' : 'text-zinc-400'}>
+                      {b.spent.toFixed(0)} / {b.limit_amount.toFixed(0)} {currency}
+                    </span>
+                    <button onClick={() => remove(b.category)} className="text-zinc-700 hover:text-red-400 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${over ? 'bg-red-500' : pct > 80 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <div className="px-5 py-6 text-center text-sm text-zinc-600">
+          Встанови місячний ліміт для категорій щоб відстежувати бюджет
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Finance() {
   const userId = useStore((s) => s.userId)
   const [data, setData] = useState(null)
@@ -212,9 +314,7 @@ export default function Finance() {
           <p className="text-sm text-zinc-500 mt-0.5">Витрати та транзакції</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
+          <Plus className="w-4 h-4" />
           Додати
         </button>
       </div>
@@ -261,6 +361,9 @@ export default function Finance() {
         {data?.recent_transactions?.length > 0 && (
           <SpendingChart transactions={data.recent_transactions} currency={data.currency} />
         )}
+
+        {/* Budget */}
+        <BudgetSection userId={userId} currency={data?.currency || 'UAH'} />
 
         {/* Summary */}
         {data && (
@@ -314,8 +417,10 @@ export default function Finance() {
               ))}
             </ul>
           ) : (
-            <div className="px-5 py-8 text-center text-sm text-zinc-600">
-              Транзакцій ще немає — додай першу вище
+            <div className="flex flex-col items-center py-10 gap-3">
+              <IllustrationFinance />
+              <p className="text-sm text-zinc-600">Транзакцій ще немає</p>
+              <p className="text-xs text-zinc-700">Напиши у чаті або натисни «+ Додати»</p>
             </div>
           )}
         </div>
