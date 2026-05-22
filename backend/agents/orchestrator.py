@@ -7,6 +7,7 @@ import agents.health as health_agent
 from graph.queries import commit_updates, get_user_context
 from llm.client import llm_respond
 from llm.prompts import GENERAL_SYSTEM
+from llm.context import format_context
 
 
 class KnomeState(TypedDict):
@@ -50,26 +51,37 @@ async def classify_intent(state: KnomeState) -> dict:
 
 
 async def run_learning(state: KnomeState) -> dict:
-    response, updates = await learning_agent.process(state["user_message"], state["user_id"])
+    response, updates = await learning_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
     return {"response": response, "graph_updates": updates}
 
 
 async def run_finance(state: KnomeState) -> dict:
-    response, updates = await financial_agent.process(state["user_message"], state["user_id"])
+    response, updates = await financial_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
     return {"response": response, "graph_updates": updates}
 
 
 async def run_health(state: KnomeState) -> dict:
-    response, updates = await health_agent.process(state["user_message"], state["user_id"])
+    response, updates = await health_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
     return {"response": response, "graph_updates": updates}
 
 
 async def run_general(state: KnomeState) -> dict:
     ctx = state.get("graph_context", {})
     user_name = ctx.get("user", {}).get("name", "")
+    ctx_str = format_context(ctx)
 
-    user_ctx = f"User name: {user_name}." if user_name else ""
-    prompt = f"{user_ctx}\n\nUser message: {state['user_message']}"
+    parts = []
+    if ctx_str:
+        parts.append(f"Context:\n{ctx_str}")
+    parts.append(f"User message: {state['user_message']}")
+    prompt = "\n\n".join(parts)
+
     response = await llm_respond(GENERAL_SYSTEM, prompt)
 
     if not response:

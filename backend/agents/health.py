@@ -2,6 +2,7 @@ import re
 from graph.queries import add_checkin, add_food_entry, get_recent_checkins
 from llm.client import llm_respond
 from llm.prompts import HEALTH_SYSTEM
+from llm.context import format_context
 
 _CHECKIN_KW = ["спав", "спала", "настрій", "самопочуття", "слept", "mood", "check-in", "чекін"]
 _FOOD_KW = ["з'їв", "з'їла", "поїв", "поїла", "ate", "food", "їжа:", "з'їм"]
@@ -35,7 +36,15 @@ def _parse_food_name(text: str) -> str:
     return text.strip()
 
 
-async def process(user_message: str, user_id: str) -> tuple[str, list]:
+def _llm_prompt(action: str, user_message: str, context: dict | None) -> str:
+    ctx_str = format_context(context) if context else ""
+    parts = [f"Action: {action}", f"User message: {user_message}"]
+    if ctx_str:
+        parts.insert(0, f"Context:\n{ctx_str}")
+    return "\n\n".join(parts)
+
+
+async def process(user_message: str, user_id: str, context: dict | None = None) -> tuple[str, list]:
     text = user_message.lower()
 
     # Food entry
@@ -44,11 +53,12 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         if food_name:
             add_food_entry(user_id, food_name)
             fallback = f"Записав їжу: {food_name}. Харчування оновлено!"
-            ctx = f"User logged food entry: «{food_name}». Saved to nutrition log."
-            response = await llm_respond(HEALTH_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+            action = f"Logged food entry: «{food_name}»."
+            response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
             return response or fallback, []
         fallback = "Що їв? Наприклад: «З'їв гречку з куркою»"
-        response = await llm_respond(HEALTH_SYSTEM, f"User wants to log food but didn't specify what.\n\nUser message: {user_message}")
+        action = "User wants to log food but no food name detected."
+        response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     # Check-in
@@ -59,30 +69,33 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
 
         if sleep == 0.0 and mood == 5 and energy == 5:
             fallback = "Розкажи більше! Наприклад:\n«Спав 7 годин, настрій 8, енергія 7»"
-            response = await llm_respond(HEALTH_SYSTEM, f"User mentioned health/sleep but provided no specific metrics.\n\nUser message: {user_message}")
+            action = "User mentioned health/check-in but no metrics detected."
+            response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
             return response or fallback, []
 
         add_checkin(user_id, sleep, mood, energy, text)
 
-        parts = []
+        sleep_note = ""
+        if sleep and sleep < 6:
+            sleep_note = "insufficient sleep (<6h)"
+        elif sleep >= 7:
+            sleep_note = "good sleep"
+
+        metrics = []
         if sleep:
-            advice = " (замало!)" if sleep < 6 else ""
-            parts.append(f"sleep: {sleep}h{advice}")
-        parts.append(f"mood: {mood}/10")
-        parts.append(f"energy: {energy}/10")
-        metrics_str = ", ".join(parts)
+            metrics.append(f"sleep {sleep}h")
+        metrics.append(f"mood {mood}/10")
+        metrics.append(f"energy {energy}/10")
 
-        sleep_note = "insufficient sleep (<6h)" if sleep and sleep < 6 else ("good sleep" if sleep >= 7 else "")
-        fallback = f"Check-in записано! {'❤️' if mood >= 7 else '😐' if mood >= 5 else '💙'}\n" + " | ".join(
-            [f"Сон: {sleep}г" + (" (замало!)" if sleep < 6 else "") if sleep else "",
-             f"Настрій: {mood}/10", f"Енергія: {energy}/10"]
-        ).strip(" |")
+        fallback_parts = [f"Сон: {sleep}г" + (" (замало!)" if sleep and sleep < 6 else "") if sleep else "",
+                          f"Настрій: {mood}/10", f"Енергія: {energy}/10"]
+        fallback = f"Check-in записано! {'❤️' if mood >= 7 else '😐' if mood >= 5 else '💙'}\n" + " | ".join(p for p in fallback_parts if p)
 
-        ctx = (
-            f"User logged health check-in: {metrics_str}. "
-            f"{'Note: ' + sleep_note if sleep_note else ''} Saved to health log."
+        action = (
+            f"Logged health check-in: {', '.join(metrics)}. "
+            f"{('Note: ' + sleep_note) if sleep_note else ''} Saved."
         )
-        response = await llm_respond(HEALTH_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     # Summary
@@ -90,7 +103,8 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         checkins = get_recent_checkins(user_id, limit=7)
         if not checkins:
             fallback = "Check-in ще не записувався. Спробуй: «Спав 7 годин, настрій 8»"
-            response = await llm_respond(HEALTH_SYSTEM, f"User asked for health summary but no check-ins recorded yet.\n\nUser message: {user_message}")
+            action = "User asked for health summary but no check-ins recorded yet."
+            response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
             return response or fallback, []
         avg_mood = sum(c["mood"] for c in checkins) / len(checkins)
         avg_sleep = sum(c["sleep_hours"] for c in checkins) / len(checkins)
@@ -100,11 +114,11 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
             f"• Середній сон: {avg_sleep:.1f}г\n"
             f"• Check-in записів: {len(checkins)}"
         )
-        ctx = (
-            f"User asked for health summary.\n"
+        action = (
+            f"User requested health summary. "
             f"Last 7 check-ins: avg mood {avg_mood:.1f}/10, avg sleep {avg_sleep:.1f}h, {len(checkins)} entries."
         )
-        response = await llm_respond(HEALTH_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     fallback = (
@@ -113,5 +127,5 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         "• «З'їв гречку»\n"
         "• «Яке моє самопочуття?»"
     )
-    response = await llm_respond(HEALTH_SYSTEM, f"User message: {user_message}")
+    response = await llm_respond(HEALTH_SYSTEM, _llm_prompt("", user_message, context))
     return response or fallback, []

@@ -7,6 +7,7 @@ from graph.queries import (
 )
 from llm.client import llm_respond
 from llm.prompts import LEARNING_SYSTEM
+from llm.context import format_context
 
 _SESSION_KW = ["позаймав", "вивч", "пройш", "прочитав", "studied", "learned", "read", "practice"]
 _GOAL_KW = ["хочу вивчити", "додай ціль", "ціль навч", "want to learn", "new goal"]
@@ -31,7 +32,15 @@ def _extract_topic(text: str) -> str:
     return ""
 
 
-async def process(user_message: str, user_id: str) -> tuple[str, list]:
+def _llm_prompt(action: str, user_message: str, context: dict | None) -> str:
+    ctx_str = format_context(context) if context else ""
+    parts = [f"Action: {action}", f"User message: {user_message}"]
+    if ctx_str:
+        parts.insert(0, f"Context:\n{ctx_str}")
+    return "\n\n".join(parts)
+
+
+async def process(user_message: str, user_id: str, context: dict | None = None) -> tuple[str, list]:
     text = user_message.lower()
 
     # Log session
@@ -40,9 +49,9 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         topic = _extract_topic(text)
         add_learning_session(user_id, minutes, topic)
         fallback = f"Записав: {minutes} хв навчання. Так тримати!"
-        topic_str = f" по темі «{topic}»" if topic else ""
-        ctx = f"User logged a learning session: {minutes} minutes{topic_str}. Session saved to knowledge graph."
-        response = await llm_respond(LEARNING_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        topic_str = f" on «{topic}»" if topic else ""
+        action = f"Logged learning session: {minutes} minutes{topic_str}. Saved."
+        response = await llm_respond(LEARNING_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     # Add goal
@@ -56,8 +65,8 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         desc = desc or "Нова ціль"
         add_goal(user_id, "learning", desc)
         fallback = f"Ціль додано: «{desc}». Вперед!"
-        ctx = f"User added a new learning goal: «{desc}». Goal saved."
-        response = await llm_respond(LEARNING_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        action = f"Added new learning goal: «{desc}»."
+        response = await llm_respond(LEARNING_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     # Show progress
@@ -68,20 +77,19 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         hours, mins = divmod(total_min, 60)
         goals_str = (
             "\n".join(f"• {g['description']} ({g['status']})" for g in goals)
-            if goals
-            else "Цілей немає — скажи «хочу вивчити ...»"
+            if goals else "No goals yet"
         )
-        time_str = f"{hours}г {mins}хв" if hours else f"{mins}хв"
+        time_str = f"{hours}h {mins}min" if hours else f"{mins}min"
         fallback = (
             f"Навчання:\n\nЦілі:\n{goals_str}\n\n"
             f"За останній тиждень: {time_str} ({len(sessions)} сесій)"
         )
-        ctx = (
-            f"User asked for their learning summary.\n"
-            f"Goals: {goals_str}\n"
+        action = (
+            f"User requested learning summary. "
+            f"Goals: {goals_str}. "
             f"Last 7 days: {time_str} across {len(sessions)} sessions."
         )
-        response = await llm_respond(LEARNING_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        response = await llm_respond(LEARNING_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     fallback = (
@@ -90,5 +98,5 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         "• «Хочу вивчити React»\n"
         "• «Яке моє навчання?»"
     )
-    response = await llm_respond(LEARNING_SYSTEM, f"User message: {user_message}")
+    response = await llm_respond(LEARNING_SYSTEM, _llm_prompt("", user_message, context))
     return response or fallback, []

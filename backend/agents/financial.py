@@ -2,6 +2,7 @@ import re
 from graph.queries import add_transaction, get_recent_transactions
 from llm.client import llm_respond
 from llm.prompts import FINANCE_SYSTEM
+from llm.context import format_context
 
 _SPEND_KW = ["витрат", "куп", "заплат", "paid", "spent", "bought", "buy"]
 _SUMMARY_KW = ["скільки", "витрати", "бюджет", "статистик", "spending", "budget", "how much", "summary"]
@@ -52,7 +53,15 @@ def _parse_amount_currency(text: str) -> tuple[float, str] | None:
     return None
 
 
-async def process(user_message: str, user_id: str) -> tuple[str, list]:
+def _llm_prompt(action: str, user_message: str, context: dict | None) -> str:
+    ctx_str = format_context(context) if context else ""
+    parts = [f"Action: {action}", f"User message: {user_message}"]
+    if ctx_str:
+        parts.insert(0, f"Context:\n{ctx_str}")
+    return "\n\n".join(parts)
+
+
+async def process(user_message: str, user_id: str, context: dict | None = None) -> tuple[str, list]:
     text = user_message.lower()
 
     # Log transaction
@@ -67,11 +76,12 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
             desc = desc.strip(" ,.-на") or category
             add_transaction(user_id, amount, currency, category, desc)
             fallback = f"Записав: {amount} {currency} — {category}. Баланс оновлено!"
-            ctx = f"User logged expense: {amount} {currency} on category «{category}» ({desc}). Transaction saved."
-            response = await llm_respond(FINANCE_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+            action = f"Logged expense: {amount} {currency} on «{category}» ({desc}). Saved."
+            response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
             return response or fallback, []
         fallback = "Вкажи суму. Наприклад: «Витратив 200 грн на каву»"
-        response = await llm_respond(FINANCE_SYSTEM, f"User wants to log an expense but didn't provide an amount.\n\nUser message: {user_message}")
+        action = "User wants to log expense but no amount detected."
+        response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     # Show summary
@@ -79,7 +89,8 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         txs = get_recent_transactions(user_id, limit=20)
         if not txs:
             fallback = "Витрат ще не записано. Спробуй: «Витратив 500 грн на їжу»"
-            response = await llm_respond(FINANCE_SYSTEM, f"User asked for spending summary but no transactions recorded yet.\n\nUser message: {user_message}")
+            action = "User asked for spending summary but no transactions recorded yet."
+            response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
             return response or fallback, []
         by_cat: dict[str, float] = {}
         for tx in txs:
@@ -88,12 +99,12 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         currency = txs[0]["currency"] if txs else "UAH"
         lines = "\n".join(f"• {cat}: {amt:.0f}" for cat, amt in sorted(by_cat.items(), key=lambda x: -x[1]))
         fallback = f"Останні витрати (сума: {total:.0f} {currency}):\n{lines}"
-        ctx = (
-            f"User asked for spending summary.\n"
-            f"Total: {total:.0f} {currency} across {len(txs)} transactions.\n"
-            f"By category:\n{lines}"
+        action = (
+            f"User requested spending summary. "
+            f"Total: {total:.0f} {currency} across {len(txs)} transactions. "
+            f"By category: {lines}"
         )
-        response = await llm_respond(FINANCE_SYSTEM, f"{ctx}\n\nUser message: {user_message}")
+        response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
     fallback = (
@@ -102,5 +113,5 @@ async def process(user_message: str, user_id: str) -> tuple[str, list]:
         "• «Заплатив $20 за Spotify»\n"
         "• «Які мої витрати?»"
     )
-    response = await llm_respond(FINANCE_SYSTEM, f"User message: {user_message}")
+    response = await llm_respond(FINANCE_SYSTEM, _llm_prompt("", user_message, context))
     return response or fallback, []
