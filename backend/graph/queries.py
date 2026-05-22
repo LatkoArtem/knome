@@ -35,6 +35,12 @@ def user_exists(user_id: str) -> bool:
     return get_user(user_id) is not None
 
 
+def get_all_users() -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn, "MATCH (u:User) RETURN u.id, u.name")
+    return [{"id": r[0], "name": r[1]} for r in rows]
+
+
 def add_goal(user_id: str, domain: str, description: str, deadline: str = "", status: str = "active") -> str:
     conn = get_connection()
     goal_id = str(uuid.uuid4())

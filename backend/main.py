@@ -9,12 +9,15 @@ from api.learning import router as learning_router
 from api.finance import router as finance_router
 from api.health_domain import router as health_domain_router
 from api.insights import router as insights_router
+from triggers import engine as trigger_engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_schema()
+    trigger_engine.start()
     yield
+    trigger_engine.stop()
 
 
 app = FastAPI(title="Knome API", version="0.1.0", lifespan=lifespan)

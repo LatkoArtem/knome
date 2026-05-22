@@ -5,6 +5,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from agents.onboarding import INITIAL_GREETING, create_onboarding_agent
 from agents.orchestrator import create_orchestrator
 from graph.queries import user_exists, get_user
+from triggers.store import pop_pending
+from triggers.engine import register_connection, unregister_connection
 
 router = APIRouter()
 
@@ -41,6 +43,14 @@ def _init_session() -> Dict[str, Any]:
 @router.websocket("/ws/chat/{user_id}")
 async def websocket_chat(websocket: WebSocket, user_id: str):
     await websocket.accept()
+    register_connection(user_id, websocket)
+
+    # Deliver any pending proactive messages immediately on connect
+    for pending in pop_pending(user_id):
+        await websocket.send_json({
+            "text": pending["text"],
+            "trigger_type": pending.get("trigger_type"),
+        })
 
     if user_id not in _sessions:
         if user_exists(user_id):
@@ -114,3 +124,5 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
 
     except WebSocketDisconnect:
         pass
+    finally:
+        unregister_connection(user_id)
