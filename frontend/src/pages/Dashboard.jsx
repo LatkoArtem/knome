@@ -1,53 +1,32 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
 
-const DOMAIN_STYLES = {
-  learning: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
-  finance:  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-  health:   'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
-}
-
-const DOMAIN_LABELS = { learning: '📚', finance: '💰', health: '❤️' }
-
-function StatCard({ title, to, color, children }) {
+function StatCard({ to, children, className = '' }) {
   return (
-    <Link to={to} className={`block rounded-2xl p-4 ${color} hover:opacity-90 transition-opacity`}>
-      <p className="text-xs font-medium text-white/80 mb-1">{title}</p>
+    <Link to={to} className={`card p-5 hover:bg-zinc-800/50 transition-colors duration-150 block group ${className}`}>
       {children}
     </Link>
   )
 }
 
-function InsightCard({ insight }) {
-  const domains = insight.domains ?? []
-  const isEmpty = insight.type === 'empty'
-
+function InsightItem({ insight }) {
+  const domainColors = {
+    learning: 'text-blue-400 bg-blue-400/10',
+    finance:  'text-emerald-400 bg-emerald-400/10',
+    health:   'text-rose-400 bg-rose-400/10',
+  }
   return (
-    <div className={`flex gap-3 items-start ${isEmpty ? 'opacity-60' : ''}`}>
-      <div className="flex-shrink-0 mt-0.5">
-        {isEmpty ? (
-          <span className="text-lg">💡</span>
-        ) : domains.length >= 2 ? (
-          <span className="text-lg">✨</span>
-        ) : (
-          <span className="text-lg">📊</span>
-        )}
-      </div>
+    <div className="flex items-start gap-3 py-3 border-b border-white/[0.04] last:border-0 animate-fade-in">
+      <span className="text-base mt-0.5">{insight.domains?.length >= 2 ? '✨' : '📊'}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-800 dark:text-gray-200 leading-snug">{insight.text}</p>
-        {domains.length > 0 && (
+        <p className="text-sm text-zinc-300 leading-snug">{insight.text}</p>
+        {insight.domains?.length > 0 && (
           <div className="flex gap-1 mt-1.5 flex-wrap">
-            {domains.map(d => (
-              <span
-                key={d}
-                className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full font-medium ${DOMAIN_STYLES[d] ?? 'bg-gray-100 text-gray-600'}`}
-              >
-                {DOMAIN_LABELS[d]} {d}
-              </span>
+            {insight.domains.map(d => (
+              <span key={d} className={`badge ${domainColors[d] || 'text-zinc-400 bg-zinc-400/10'}`}>{d}</span>
             ))}
           </div>
         )}
@@ -56,21 +35,15 @@ function InsightCard({ insight }) {
   )
 }
 
-const BURNOUT_COLORS = {
-  low:    'text-emerald-600 dark:text-emerald-400',
-  medium: 'text-amber-600 dark:text-amber-400',
-  high:   'text-rose-600 dark:text-rose-400',
-}
-
-const BURNOUT_BG = {
-  low:    'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800',
-  medium: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
-  high:   'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800',
+const BURNOUT_STYLE = {
+  low:    { bar: 'bg-emerald-500', text: 'text-emerald-400', badge: 'text-emerald-400 bg-emerald-400/10', label: 'Низький' },
+  medium: { bar: 'bg-amber-500',   text: 'text-amber-400',   badge: 'text-amber-400 bg-amber-400/10',   label: 'Середній' },
+  high:   { bar: 'bg-red-500',     text: 'text-red-400',     badge: 'text-red-400 bg-red-400/10',       label: 'Високий' },
 }
 
 export default function Dashboard() {
-  const { t } = useTranslation()
   const userId = useStore((s) => s.userId)
+  const userName = useStore((s) => s.userName)
   const [learning, setLearning] = useState(null)
   const [finance, setFinance] = useState(null)
   const [health, setHealth] = useState(null)
@@ -81,147 +54,167 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!userId) return
-    fetch(`${API}/learning/summary/${userId}`).then(r => r.ok ? r.json() : null).then(setLearning).catch(() => {})
-    fetch(`${API}/finance/summary/${userId}`).then(r => r.ok ? r.json() : null).then(setFinance).catch(() => {})
-    fetch(`${API}/health-domain/summary/${userId}`).then(r => r.ok ? r.json() : null).then(setHealth).catch(() => {})
-    fetch(`${API}/ml/burnout/${userId}`).then(r => r.ok ? r.json() : null).then(setBurnout).catch(() => {})
-    fetch(`${API}/ml/forecast/${userId}`).then(r => r.ok ? r.json() : null).then(setForecast).catch(() => {})
-
+    const get = (path, cb) => fetch(`${API}${path}`).then(r => r.ok ? r.json() : null).then(cb).catch(() => {})
+    get(`/learning/summary/${userId}`, setLearning)
+    get(`/finance/summary/${userId}`, setFinance)
+    get(`/health-domain/summary/${userId}`, setHealth)
+    get(`/ml/burnout/${userId}`, setBurnout)
+    get(`/ml/forecast/${userId}`, setForecast)
     setInsightsLoading(true)
-    fetch(`${API}/insights/${userId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { setInsights(data?.insights ?? []); setInsightsLoading(false) })
-      .catch(() => { setInsights([]); setInsightsLoading(false) })
+    get(`/insights/${userId}`, (data) => { setInsights(data?.insights ?? []); setInsightsLoading(false) })
   }, [userId])
 
+  const bs = burnout ? BURNOUT_STYLE[burnout.level] || BURNOUT_STYLE.low : null
+
   return (
-    <div className="flex flex-col min-h-screen pb-16">
-      <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-        <h1 className="font-bold text-xl text-gray-900 dark:text-gray-100">{t('dashboard.title')}</h1>
-        <span className="text-2xl">👋</span>
-      </header>
+    <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">
+          {userName ? `Привіт, ${userName} 👋` : 'Дашборд'}
+        </h1>
+        <p className="text-sm text-zinc-500 mt-0.5">Твій особистий AI-огляд</p>
+      </div>
 
-      <div className="flex-1 px-4 py-4 flex flex-col gap-3">
-        {/* Stat cards */}
-        <StatCard title={t('dashboard.learning')} to="/learning" color="bg-indigo-500">
-          {learning ? (
-            <div className="text-white">
-              <p className="text-2xl font-bold">{learning.sessions_this_week} <span className="text-sm font-normal">{t('dashboard.sessions')}</span></p>
-              <p className="text-sm mt-0.5">{learning.total_minutes} {t('dashboard.minutes')} · {learning.goals?.length ?? 0} {t('dashboard.goals')}</p>
-            </div>
-          ) : (
-            <p className="text-white/70 text-sm">{t('dashboard.no_data')}</p>
-          )}
-        </StatCard>
+      {/* Bento Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-auto">
 
-        <StatCard title={t('dashboard.finance')} to="/finance" color="bg-emerald-500">
-          {finance ? (
-            <div className="text-white">
-              <p className="text-2xl font-bold">{finance.total_spent?.toFixed(0)} <span className="text-sm font-normal">{finance.currency}</span></p>
-              <p className="text-sm mt-0.5">{finance.recent_transactions?.length ?? 0} {t('dashboard.transactions')}</p>
-            </div>
-          ) : (
-            <p className="text-white/70 text-sm">{t('dashboard.no_data')}</p>
-          )}
-        </StatCard>
-
-        <StatCard title={t('dashboard.health')} to="/health" color="bg-rose-500">
-          {health ? (
-            <div className="text-white">
-              <p className="text-2xl font-bold">
-                {health.avg_mood_7d ?? '—'}<span className="text-sm font-normal">/10</span>
-                <span className="ml-3 text-lg">{health.avg_sleep_7d ?? '—'}г</span>
-              </p>
-              <p className="text-sm mt-0.5">{t('dashboard.mood')} · {t('dashboard.sleep')} · {health.checkin_count ?? 0} {t('dashboard.checkins')}</p>
-            </div>
-          ) : (
-            <p className="text-white/70 text-sm">{t('dashboard.no_data')}</p>
-          )}
-        </StatCard>
-
-        {/* Burnout Risk */}
-        <div className={`rounded-2xl p-4 border ${burnout ? BURNOUT_BG[burnout.level] : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🔋</span>
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.burnout_title')}</p>
-            </div>
-            {burnout && (
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${BURNOUT_COLORS[burnout.level]}`}>
-                {t(`dashboard.burnout_${burnout.level}`)} · {burnout.score}/100
-              </span>
-            )}
+        {/* Learning — spans 1 col */}
+        <StatCard to="/learning">
+          <div className="flex items-center justify-between mb-3">
+            <span className="section-label">Навчання</span>
+            <span className="text-base">📚</span>
           </div>
-          {!burnout ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500">{t('dashboard.burnout_no_data')}</p>
-          ) : (
+          {learning ? (
             <>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-2">
-                <div
-                  className={`h-1.5 rounded-full transition-all ${burnout.level === 'high' ? 'bg-rose-500' : burnout.level === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                  style={{ width: `${burnout.score}%` }}
-                />
+              <div className="stat-value">{learning.sessions_this_week}
+                <span className="text-sm font-normal text-zinc-500 ml-1.5">сесій</span>
               </div>
-              {burnout.recommendations?.length > 0 && (
-                <p className="text-xs text-gray-600 dark:text-gray-400 leading-snug">
-                  {burnout.recommendations[0]}
-                </p>
+              <p className="text-xs text-zinc-500 mt-1">{learning.total_minutes} хв · {learning.goals?.length ?? 0} цілей</p>
+            </>
+          ) : (
+            <p className="text-sm text-zinc-600">Дані відсутні</p>
+          )}
+        </StatCard>
+
+        {/* Finance — spans 1 col */}
+        <StatCard to="/finance">
+          <div className="flex items-center justify-between mb-3">
+            <span className="section-label">Фінанси</span>
+            <span className="text-base">💰</span>
+          </div>
+          {finance ? (
+            <>
+              <div className="stat-value">{finance.total_spent?.toFixed(0)}
+                <span className="text-sm font-normal text-zinc-500 ml-1.5">{finance.currency}</span>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">{finance.recent_transactions?.length ?? 0} транзакцій</p>
+              {finance.by_category && (
+                <div className="mt-2 flex gap-1 flex-wrap">
+                  {Object.entries(finance.by_category).slice(0, 3).map(([cat]) => (
+                    <span key={cat} className="badge bg-zinc-800 text-zinc-400">{cat}</span>
+                  ))}
+                </div>
               )}
             </>
+          ) : (
+            <p className="text-sm text-zinc-600">Дані відсутні</p>
+          )}
+        </StatCard>
+
+        {/* Health — spans 1 col */}
+        <StatCard to="/health" className="sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between mb-3">
+            <span className="section-label">Здоров'я</span>
+            <span className="text-base">❤️</span>
+          </div>
+          {health && (health.avg_mood_7d || health.avg_sleep_7d) ? (
+            <>
+              <div className="flex items-end gap-4">
+                <div>
+                  <div className="stat-value">{health.avg_mood_7d ?? '—'}<span className="text-sm font-normal text-zinc-500">/10</span></div>
+                  <p className="text-xs text-zinc-500 mt-0.5">Настрій</p>
+                </div>
+                <div>
+                  <div className="stat-value">{health.avg_sleep_7d ?? '—'}<span className="text-sm font-normal text-zinc-500">г</span></div>
+                  <p className="text-xs text-zinc-500 mt-0.5">Сон</p>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-600 mt-2">{health.checkin_count ?? 0} check-in за тиждень</p>
+            </>
+          ) : (
+            <p className="text-sm text-zinc-600">Дані відсутні</p>
+          )}
+        </StatCard>
+
+        {/* Burnout — spans full on sm, 2 cols on lg */}
+        <div className="card p-5 sm:col-span-2 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🔋</span>
+              <span className="section-label">Ризик вигорання</span>
+            </div>
+            {bs && (
+              <span className={`badge ${bs.badge} font-semibold`}>{bs.label} · {burnout.score}/100</span>
+            )}
+          </div>
+          {burnout ? (
+            <>
+              <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-700 ${bs.bar}`} style={{ width: `${burnout.score}%` }} />
+              </div>
+              {burnout.recommendations?.[0] && (
+                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{burnout.recommendations[0]}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-zinc-600">Потрібні check-ini для аналізу</p>
           )}
         </div>
 
-        {/* Spending Forecast */}
-        <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-          <div className="flex items-center gap-2 mb-2">
+        {/* Forecast */}
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-3">
             <span className="text-base">📈</span>
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.forecast_title')}</p>
+            <span className="section-label">Прогноз витрат (30 дн.)</span>
           </div>
-          {!forecast || forecast.model === 'insufficient_data' ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              {forecast?.warning || t('dashboard.forecast_no_data')}
-            </p>
-          ) : (
+          {forecast && forecast.model !== 'insufficient_data' ? (
             <>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {forecast.total_projected_30d?.toFixed(0)}
-                <span className="text-sm font-normal text-gray-500 ml-1">{forecast.currency}</span>
-              </p>
-              <div className="mt-2 flex flex-col gap-1">
+              <div className="stat-value">{forecast.total_projected_30d?.toFixed(0)}
+                <span className="text-sm font-normal text-zinc-500 ml-1.5">{forecast.currency}</span>
+              </div>
+              <div className="mt-2 space-y-1">
                 {(forecast.categories ?? []).slice(0, 3).map(c => (
-                  <div key={c.category} className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span className="capitalize">{c.category}</span>
-                    <span>{c.projected_30d?.toFixed(0)} {c.currency}</span>
+                  <div key={c.category} className="flex justify-between text-xs">
+                    <span className="text-zinc-500 capitalize">{c.category}</span>
+                    <span className="text-zinc-400 font-medium">{c.projected_30d?.toFixed(0)}</span>
                   </div>
                 ))}
               </div>
-              {forecast.warning && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">{forecast.warning}</p>
-              )}
+              {forecast.warning && <p className="text-[10px] text-amber-500/80 mt-2">{forecast.warning}</p>}
             </>
+          ) : (
+            <p className="text-sm text-zinc-600">{forecast?.warning || 'Потрібно більше транзакцій'}</p>
           )}
         </div>
 
-        {/* Cross-domain insights */}
-        <div className="rounded-2xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+        {/* Insights — full width */}
+        <div className="card p-5 sm:col-span-2 lg:col-span-3">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-base">🧠</span>
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.insights_title')}</p>
+            <span className="section-label">AI Інсайти</span>
           </div>
-
           {insightsLoading ? (
-            <div className="flex gap-2 items-center text-gray-400 dark:text-gray-500 text-sm">
-              <span className="animate-spin">⟳</span>
-              {t('dashboard.insights_loading')}
+            <div className="flex items-center gap-2 text-sm text-zinc-600">
+              <span className="w-3.5 h-3.5 border-2 border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
+              Аналізую твої дані...
             </div>
           ) : insights && insights.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {insights.map((insight, i) => (
-                <InsightCard key={i} insight={insight} />
-              ))}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-0">
+              {insights.map((ins, i) => <InsightItem key={i} insight={ins} />)}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 dark:text-gray-500">{t('dashboard.insights_empty')}</p>
+            <p className="text-sm text-zinc-600">Збери більше даних для перших інсайтів</p>
           )}
         </div>
       </div>

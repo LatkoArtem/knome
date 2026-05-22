@@ -1,18 +1,37 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
 
+function Section({ title, children }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/[0.06]">
+        <p className="section-label">{title}</p>
+      </div>
+      <div className="divide-y divide-white/[0.04]">{children}</div>
+    </div>
+  )
+}
+
+function Row({ label, description, action }) {
+  return (
+    <div className="flex items-center justify-between px-5 py-4">
+      <div>
+        <p className="text-sm font-medium text-zinc-200">{label}</p>
+        {description && <p className="text-xs text-zinc-500 mt-0.5">{description}</p>}
+      </div>
+      <div className="shrink-0 ml-4">{action}</div>
+    </div>
+  )
+}
+
 export default function Settings() {
-  const { t } = useTranslation()
   const navigate = useNavigate()
   const userId = useStore((s) => s.userId)
   const userName = useStore((s) => s.userName)
   const userEmail = useStore((s) => s.userEmail)
-  const theme = useStore((s) => s.theme)
-  const setTheme = useStore((s) => s.setTheme)
   const language = useStore((s) => s.language)
   const setLanguage = useStore((s) => s.setLanguage)
   const logout = useStore((s) => s.logout)
@@ -29,128 +48,119 @@ export default function Settings() {
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
-      a.download = `knome_export_${userId.slice(0, 8)}.json`
-      a.click()
+      a.href = url; a.download = `knome_export_${userId.slice(0, 8)}.json`; a.click()
       URL.revokeObjectURL(url)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setExporting(false)
-    }
+    } catch (e) { console.error(e) }
+    finally { setExporting(false) }
   }
 
   const handleDelete = async () => {
     setDeleting(true)
     try {
       await fetch(`${API}/user/delete/${userId}`, { method: 'DELETE' })
-      logout()
-      navigate('/login')
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setDeleting(false)
-    }
+      logout(); navigate('/login')
+    } catch (e) { console.error(e) }
+    finally { setDeleting(false) }
   }
 
-  return (
-    <div className="flex flex-col min-h-screen pb-16">
-      <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-800">
-        <h1 className="font-bold text-xl text-gray-900 dark:text-gray-100">⚙️ Налаштування</h1>
-      </header>
+  const initials = (userName || userEmail || 'U')[0].toUpperCase()
+  const displayName = userName || userEmail?.split('@')[0] || 'Користувач'
 
-      <div className="flex-1 px-4 py-4 space-y-4">
+  return (
+    <div className="px-4 sm:px-6 py-6 max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Налаштування</h1>
+        <p className="text-sm text-zinc-500 mt-0.5">Акаунт і персоналізація</p>
+      </div>
+
+      <div className="space-y-4">
         {/* Profile */}
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 space-y-2">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Профіль</h2>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold text-lg">
-              {(userName || userEmail || '?')[0].toUpperCase()}
+        <div className="card p-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold text-lg shrink-0">
+              {initials}
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{userName || 'Гість'}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{userEmail || userId?.slice(0, 8)}</p>
+              <p className="text-base font-semibold text-zinc-100">{displayName}</p>
+              <p className="text-sm text-zinc-500">{userEmail || userId?.slice(0, 16)}</p>
             </div>
           </div>
-        </section>
+        </div>
 
         {/* Appearance */}
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Вигляд</h2>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700 dark:text-gray-300">Тема</span>
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              {theme === 'dark' ? '☀️ Світла' : '🌙 Темна'}
-            </button>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700 dark:text-gray-300">Мова</span>
-            <button
-              onClick={() => setLanguage(language === 'ua' ? 'en' : 'ua')}
-              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              {language === 'ua' ? '🇺🇦 UA' : '🇬🇧 EN'}
-            </button>
-          </div>
-        </section>
+        <Section title="Вигляд і мова">
+          <Row
+            label="Мова інтерфейсу"
+            description="Мова повідомлень і підписів"
+            action={
+              <button onClick={() => setLanguage(language === 'ua' ? 'en' : 'ua')}
+                className="btn-outline text-xs px-3 py-1.5">
+                {language === 'ua' ? '🇺🇦 Українська' : '🇬🇧 English'}
+              </button>
+            }
+          />
+        </Section>
 
         {/* Data */}
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Дані</h2>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="w-full py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-left px-4"
-          >
-            {exporting ? '⏳ Завантаження...' : '📥 Завантажити мої дані (JSON)'}
-          </button>
-        </section>
+        <Section title="Мої дані">
+          <Row
+            label="Завантажити дані"
+            description="Всі твої записи у форматі JSON"
+            action={
+              <button onClick={handleExport} disabled={exporting} className="btn-outline text-xs px-3 py-1.5">
+                {exporting ? '⏳' : '📥 Скачати'}
+              </button>
+            }
+          />
+        </Section>
 
-        {/* Logout */}
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Акаунт</h2>
-          <button
-            onClick={() => { logout(); navigate('/login') }}
-            className="w-full py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-left px-4"
-          >
-            🚪 Вийти
-          </button>
-        </section>
+        {/* Account */}
+        <Section title="Акаунт">
+          <Row
+            label="Вийти з акаунту"
+            description="Зберегти дані і вийти"
+            action={
+              <button onClick={() => { logout(); navigate('/login') }} className="btn-ghost text-xs px-3 py-1.5">
+                Вийти
+              </button>
+            }
+          />
+        </Section>
 
         {/* Danger zone */}
-        <section className="rounded-2xl border border-rose-200 dark:border-rose-900 p-4 space-y-3">
-          <h2 className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wide">Небезпечна зона</h2>
-          {!confirmDelete ? (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="w-full py-2.5 rounded-xl border border-rose-300 dark:border-rose-800 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-left px-4"
-            >
-              🗑️ Видалити акаунт і всі дані
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-rose-600 dark:text-rose-400">Всі дані будуть видалені назавжди. Це незворотньо.</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex-1 py-2 bg-rose-600 text-white rounded-xl text-sm font-medium disabled:opacity-50"
-                >
-                  {deleting ? 'Видалення...' : 'Підтвердити видалення'}
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-xl text-sm"
-                >
-                  Скасувати
+        <div className="card border-red-500/10 overflow-hidden">
+          <div className="px-5 py-3 border-b border-red-500/10">
+            <p className="section-label text-red-500/70">Небезпечна зона</p>
+          </div>
+          <div className="px-5 py-4">
+            {!confirmDelete ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-zinc-300">Видалити акаунт</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Всі дані видаляться назавжди. Незворотньо.</p>
+                </div>
+                <button onClick={() => setConfirmDelete(true)} className="btn-danger text-xs ml-4">
+                  Видалити
                 </button>
               </div>
-            </div>
-          )}
-        </section>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-red-400 leading-relaxed">
+                  Підтверди видалення — всі твої дані (чати, транзакції, check-ini) будуть видалені назавжди.
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={handleDelete} disabled={deleting} className="btn-danger flex-1">
+                    {deleting ? 'Видалення...' : '🗑️ Так, видалити все'}
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)} className="btn-outline flex-1">Скасувати</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Version */}
+        <p className="text-center text-xs text-zinc-700 pb-2">Knome v0.5 · Зроблено з ❤️</p>
       </div>
     </div>
   )

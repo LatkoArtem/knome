@@ -1,214 +1,186 @@
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
 
-function DueReviewCard({ review, onDone }) {
-  const isOverdue = review.days_overdue > 0
-  return (
-    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-      <span className="text-lg">🔔</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{review.topic_name}</p>
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          {isOverdue ? `запізнення ${review.days_overdue} дн.` : 'сьогодні'}
-          {' · '}{review.repetitions} повт.
-        </p>
-      </div>
-      <div className="flex gap-1.5 shrink-0">
-        <button onClick={() => onDone(review.topic_name, 2)}
-          className="text-xs px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
-          Важко
-        </button>
-        <button onClick={() => onDone(review.topic_name, 4)}
-          className="text-xs px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400">
-          Знаю
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function Learning() {
-  const { t } = useTranslation()
   const userId = useStore((s) => s.userId)
   const [data, setData] = useState(null)
-  const [showSessionForm, setShowSessionForm] = useState(false)
-  const [showGoalForm, setShowGoalForm] = useState(false)
-  const [sessionDuration, setSessionDuration] = useState('')
+  const [due, setDue] = useState([])
+  const [showGoal, setShowGoal] = useState(false)
+  const [showSession, setShowSession] = useState(false)
+  const [goalText, setGoalText] = useState('')
   const [sessionTopic, setSessionTopic] = useState('')
-  const [goalDesc, setGoalDesc] = useState('')
+  const [sessionMin, setSessionMin] = useState(30)
   const [saving, setSaving] = useState(false)
 
   const load = () => {
     if (!userId) return
-    fetch(`${API}/learning/summary/${userId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(setData)
-      .catch(() => {})
+    fetch(`${API}/learning/summary/${userId}`).then(r => r.ok ? r.json() : null).then(setData).catch(() => {})
+    fetch(`${API}/learning/due/${userId}`).then(r => r.ok ? r.json() : null).then(d => setDue(d?.due ?? [])).catch(() => {})
   }
-
   useEffect(() => { load() }, [userId])
 
-  const saveSession = async () => {
-    if (!sessionDuration || saving) return
-    setSaving(true)
-    await fetch(`${API}/learning/session/${userId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ duration_min: parseInt(sessionDuration), topic: sessionTopic }),
-    })
-    setSaving(false)
-    setShowSessionForm(false)
-    setSessionDuration('')
-    setSessionTopic('')
-    load()
-  }
-
-  const saveGoal = async () => {
-    if (!goalDesc || saving) return
+  const addGoal = async () => {
+    if (!goalText.trim() || saving) return
     setSaving(true)
     await fetch(`${API}/learning/goal/${userId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description: goalDesc }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: goalText, domain: 'learning' }),
     })
-    setSaving(false)
-    setShowGoalForm(false)
-    setGoalDesc('')
-    load()
+    setSaving(false); setShowGoal(false); setGoalText(''); load()
   }
 
-  const markReviewed = async (topicName, quality) => {
-    await fetch(`${API}/learning/review/${userId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic_name: topicName, quality }),
+  const addSession = async () => {
+    if (!sessionTopic.trim() || saving) return
+    setSaving(true)
+    await fetch(`${API}/learning/session/${userId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: sessionTopic, duration_min: sessionMin }),
     })
-    load()
+    setSaving(false); setShowSession(false); setSessionTopic(''); setSessionMin(30); load()
   }
-
-  const dueReviews = data?.due_reviews ?? []
 
   return (
-    <div className="flex flex-col min-h-screen pb-16">
-      <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2">
-        <span className="text-xl">📚</span>
-        <h1 className="font-bold text-xl text-gray-900 dark:text-gray-100">{t('learning.title')}</h1>
-        <div className="ml-auto flex gap-2">
-          <button onClick={() => { setShowGoalForm(true); setShowSessionForm(false) }}
-            className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">
-            + {t('learning.add_goal')}
+    <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Навчання</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">Цілі, сесії, повторення</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => { setShowGoal(!showGoal); setShowSession(false) }} className="btn-outline text-xs">
+            + Ціль
           </button>
-          <button onClick={() => { setShowSessionForm(true); setShowGoalForm(false) }}
-            className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white">
-            + {t('learning.add_session')}
+          <button onClick={() => { setShowSession(!showSession); setShowGoal(false) }} className="btn-primary text-xs">
+            + Сесія
           </button>
         </div>
-      </header>
+      </div>
 
-      <div className="flex-1 px-4 py-4 space-y-5">
-        {/* Session form */}
-        {showSessionForm && (
-          <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800 p-4 space-y-3">
-            <input type="number" min="1" placeholder={t('learning.duration_label')} value={sessionDuration}
-              onChange={e => setSessionDuration(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm" />
-            <input type="text" placeholder={t('learning.topic_label')} value={sessionTopic}
-              onChange={e => setSessionTopic(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm" />
+      <div className="space-y-4">
+        {/* Add Goal */}
+        {showGoal && (
+          <div className="card p-5 animate-fade-in">
+            <h3 className="text-sm font-medium text-zinc-200 mb-3">Нова навчальна ціль</h3>
+            <input value={goalText} onChange={e => setGoalText(e.target.value)}
+              placeholder="Наприклад: вивчити Python за 3 місяці..."
+              className="input mb-3" onKeyDown={e => e.key === 'Enter' && addGoal()} />
             <div className="flex gap-2">
-              <button onClick={saveSession} disabled={saving}
-                className="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-                {t('learning.save')}
-              </button>
-              <button onClick={() => setShowSessionForm(false)}
-                className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-xl text-sm">
-                {t('learning.cancel')}
-              </button>
+              <button onClick={addGoal} disabled={saving || !goalText.trim()} className="btn-primary flex-1">{saving ? '...' : 'Додати ціль'}</button>
+              <button onClick={() => setShowGoal(false)} className="btn-outline flex-1">Скасувати</button>
             </div>
           </div>
         )}
 
-        {/* Goal form */}
-        {showGoalForm && (
-          <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800 p-4 space-y-3">
-            <input type="text" placeholder={t('learning.goal_label')} value={goalDesc}
-              onChange={e => setGoalDesc(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm" />
-            <div className="flex gap-2">
-              <button onClick={saveGoal} disabled={saving}
-                className="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-                {t('learning.save')}
-              </button>
-              <button onClick={() => setShowGoalForm(false)}
-                className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-xl text-sm">
-                {t('learning.cancel')}
-              </button>
+        {/* Add Session */}
+        {showSession && (
+          <div className="card p-5 animate-fade-in">
+            <h3 className="text-sm font-medium text-zinc-200 mb-3">Нова сесія навчання</h3>
+            <div className="space-y-3">
+              <input value={sessionTopic} onChange={e => setSessionTopic(e.target.value)}
+                placeholder="Тема: Python, English, математика..."
+                className="input" onKeyDown={e => e.key === 'Enter' && addSession()} />
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs text-zinc-400">Тривалість</label>
+                  <span className="text-sm font-semibold text-zinc-200">{sessionMin} хв</span>
+                </div>
+                <input type="range" min={5} max={180} step={5} value={sessionMin}
+                  onChange={e => setSessionMin(Number(e.target.value))}
+                  className="w-full h-1.5 rounded-full bg-zinc-800 appearance-none cursor-pointer accent-blue-500" />
+                <div className="flex justify-between text-[10px] text-zinc-700 mt-1"><span>5 хв</span><span>3 год</span></div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={addSession} disabled={saving || !sessionTopic.trim()} className="btn-primary flex-1">{saving ? '...' : 'Записати'}</button>
+                <button onClick={() => setShowSession(false)} className="btn-outline flex-1">Скасувати</button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Due reviews */}
-        {dueReviews.length > 0 && (
-          <section>
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-              {t('learning.due_title')} · {dueReviews.length}
-            </h2>
-            <ul className="space-y-2">
-              {dueReviews.map((r, i) => (
-                <li key={i}>
-                  <DueReviewCard review={r} onDone={markReviewed} />
+        {/* Stats row */}
+        {data && (
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Цього тижня', value: data.sessions_this_week, unit: 'сесій', color: 'text-blue-400' },
+              { label: 'Хвилин',     value: data.total_minutes,       unit: 'хв',    color: 'text-indigo-400' },
+              { label: 'Цілей',      value: data.goals?.length ?? 0,  unit: 'цілей', color: 'text-emerald-400' },
+            ].map(({ label, value, unit, color }) => (
+              <div key={label} className="card p-4 text-center">
+                <p className={`text-2xl font-bold ${color}`}>{value ?? 0}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">{unit}</p>
+                <p className="text-[10px] text-zinc-600 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Due for review */}
+        {due.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="px-5 py-3 border-b border-white/[0.06] flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <p className="section-label">Потрібно повторити ({due.length})</p>
+            </div>
+            <ul className="divide-y divide-white/[0.04]">
+              {due.map((r, i) => (
+                <li key={i} className="flex items-center justify-between px-5 py-3">
+                  <span className="text-sm text-zinc-300 font-medium">{r.topic_name}</span>
+                  <span className="text-xs text-amber-400">
+                    {r.days_overdue > 0 ? `${r.days_overdue} дн. прострочено` : 'Сьогодні'}
+                  </span>
                 </li>
               ))}
             </ul>
-          </section>
+          </div>
         )}
 
         {/* Goals */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-            {t('learning.goals_title')}
-          </h2>
+        <div className="card overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06]">
+            <p className="section-label">Мої цілі</p>
+          </div>
           {data?.goals?.length ? (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-white/[0.04]">
               {data.goals.map((g, i) => (
-                <li key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                  <span className="flex-1">{g.description}</span>
-                  <span className="text-xs text-gray-400">{g.status}</span>
+                <li key={i} className="flex items-start gap-3 px-5 py-3.5">
+                  <span className="mt-0.5 w-4 h-4 rounded border border-blue-500/40 bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  </span>
+                  <span className="text-sm text-zinc-300">{g.description}</span>
+                  <span className={`ml-auto shrink-0 text-xs ${g.status === 'done' ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                    {g.status === 'done' ? '✓' : '●'}
+                  </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-400">{t('learning.no_goals')}</p>
+            <p className="px-5 py-8 text-center text-sm text-zinc-600">Цілей ще немає — додай першу!</p>
           )}
-        </section>
+        </div>
 
-        {/* Sessions */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-            {t('learning.sessions_title')}
-          </h2>
+        {/* Recent sessions */}
+        <div className="card overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06]">
+            <p className="section-label">Останні сесії</p>
+          </div>
           {data?.recent_sessions?.length ? (
-            <ul className="space-y-2">
-              {data.recent_sessions.map((s, i) => (
-                <li key={i} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm">
-                  <span className="text-indigo-500 font-semibold w-12 shrink-0">{s.duration}хв</span>
-                  <span className="text-gray-500 text-xs">{s.date?.slice(0, 10)}</span>
+            <ul className="divide-y divide-white/[0.04]">
+              {data.recent_sessions.slice(0, 5).map((s, i) => (
+                <li key={i} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-800/20 transition-colors">
+                  <span className="text-sm text-zinc-400">{s.topic || 'Сесія навчання'}</span>
+                  <div className="flex items-center gap-3 text-xs text-zinc-500">
+                    <span className="text-blue-400 font-medium">{s.duration} хв</span>
+                    <span>{s.date?.slice(0, 10)}</span>
+                  </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-400">{t('learning.no_sessions')}</p>
+            <p className="px-5 py-8 text-center text-sm text-zinc-600">Сесій ще немає</p>
           )}
-          {data && (
-            <p className="text-xs text-gray-400 mt-2">
-              {t('learning.week_total', { minutes: data.total_minutes, sessions: data.sessions_this_week })}
-            </p>
-          )}
-        </section>
+        </div>
       </div>
     </div>
   )

@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from './store'
 import ErrorBoundary from './components/ErrorBoundary'
-import NavBar from './components/NavBar'
+import Sidebar from './components/Sidebar'
 import Chat from './pages/Chat'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
@@ -18,50 +18,53 @@ function PrivateRoute({ children }) {
   return userId ? children : <Navigate to="/login" replace />
 }
 
-function LayoutWithNav({ children }) {
+const NO_SHELL = ['/login', '/onboarding']
+
+function Shell({ children }) {
   const location = useLocation()
-  const noNav = ['/onboarding', '/login']
-  const showNav = !noNav.includes(location.pathname)
+  const hasShell = !NO_SHELL.includes(location.pathname)
+
+  if (!hasShell) return children
+
   return (
-    <>
-      {children}
-      {showNav && <NavBar />}
-    </>
+    <div className="flex h-screen bg-[#09090B]">
+      <Sidebar />
+      {/* Main content — offset by sidebar on desktop */}
+      <main className="flex-1 lg:ml-[220px] min-h-screen overflow-y-auto pb-14 lg:pb-0">
+        {children}
+      </main>
+    </div>
   )
 }
 
 function LanguageSync() {
   const { i18n } = useTranslation()
   const language = useStore((s) => s.language)
-  useEffect(() => { i18n.changeLanguage(language) }, [language])
+  useEffect(() => { i18n.changeLanguage(language) }, [language, i18n])
   return null
 }
 
 export default function App() {
-  const theme = useStore((s) => s.theme)
-
   return (
-    <div className={theme === 'dark' ? 'dark' : ''}>
-      <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-        <ErrorBoundary>
-          <BrowserRouter>
-            <LanguageSync />
-            <LayoutWithNav>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/onboarding" element={<Onboarding />} />
-                <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
-                <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-                <Route path="/learning" element={<PrivateRoute><Learning /></PrivateRoute>} />
-                <Route path="/finance" element={<PrivateRoute><Finance /></PrivateRoute>} />
-                <Route path="/health" element={<PrivateRoute><Health /></PrivateRoute>} />
-                <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-                <Route path="/" element={<Navigate to="/chat" replace />} />
-              </Routes>
-            </LayoutWithNav>
-          </BrowserRouter>
-        </ErrorBoundary>
-      </div>
+    <div className="bg-[#09090B] text-zinc-100 min-h-screen font-sans">
+      <ErrorBoundary>
+        <BrowserRouter>
+          <LanguageSync />
+          <Shell>
+            <Routes>
+              <Route path="/login"      element={<Login />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/chat"       element={<PrivateRoute><Chat /></PrivateRoute>} />
+              <Route path="/dashboard"  element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/learning"   element={<PrivateRoute><Learning /></PrivateRoute>} />
+              <Route path="/finance"    element={<PrivateRoute><Finance /></PrivateRoute>} />
+              <Route path="/health"     element={<PrivateRoute><Health /></PrivateRoute>} />
+              <Route path="/settings"   element={<PrivateRoute><Settings /></PrivateRoute>} />
+              <Route path="/"           element={<Navigate to="/chat" replace />} />
+            </Routes>
+          </Shell>
+        </BrowserRouter>
+      </ErrorBoundary>
     </div>
   )
 }

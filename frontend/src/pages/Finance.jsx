@@ -1,158 +1,123 @@
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
 
-const CATEGORIES = ['авто', 'їжа', 'transport', 'розваги', 'навчання', "здоров'я", 'комунальні', 'одяг', 'інше']
-
+const CATS = ['авто', 'їжа', 'transport', 'розваги', 'навчання', "здоров'я", 'комунальні', 'одяг', 'інше']
 const CAT_HINTS = [
-  { cat: "їжа",       words: ["кава","pizza","піца","ресторан","кафе","продукти","atb","silpo","delivery","glovo","sushi","burger","їжа","обід"] },
-  { cat: "transport", words: ["uber","bolt","uklon","таксі","метро","бензин","bus","parking","паркінг","поїзд"] },
-  { cat: "розваги",   words: ["netflix","spotify","kino","кіно","concert","концерт","steam","game","бар","bar","пиво"] },
-  { cat: "навчання",  words: ["курс","course","udemy","coursera","книга","book","репетитор"] },
-  { cat: "здоров'я",  words: ["аптека","pharmacy","gym","фітнес","лікар","doctor","ліки"] },
-  { cat: "комунальні",words: ["інтернет","internet","телефон","оренда","rent","газ","електрика","kyivstar","vodafone"] },
-  { cat: "одяг",      words: ["одяг","zara","hm","uniqlo","взуття","shoes","куртка","футболка"] },
+  { cat: 'їжа',       kw: ['кава','pizza','піца','ресторан','кафе','продукти','atb','silpo','glovo','sushi','їжа','обід','макдо','burger','доставка'] },
+  { cat: 'transport', kw: ['uber','bolt','uklon','таксі','метро','бензин','bus','паркінг','поїзд','авіа'] },
+  { cat: 'розваги',   kw: ['netflix','spotify','кіно','concert','steam','game','бар','пиво','клуб'] },
+  { cat: 'навчання',  kw: ['курс','udemy','coursera','книга','репетитор','skillshare'] },
+  { cat: "здоров'я",  kw: ['аптека','pharmacy','gym','фітнес','лікар','ліки','вітаміни'] },
+  { cat: 'комунальні',kw: ['інтернет','телефон','оренда','газ','електрика','kyivstar','vodafone','icloud'] },
+  { cat: 'одяг',      kw: ['одяг','zara','hm','uniqlo','взуття','куртка','футболка'] },
 ]
-
-function guessCategory(desc) {
+const guessCategory = (desc) => {
   if (!desc) return null
-  const low = desc.toLowerCase()
-  for (const { cat, words } of CAT_HINTS) {
-    if (words.some(w => low.includes(w))) return cat
-  }
+  const l = desc.toLowerCase()
+  for (const { cat, kw } of CAT_HINTS) if (kw.some(w => l.includes(w))) return cat
   return null
 }
 
-const CURRENCIES = ['UAH', 'USD', 'EUR']
-
-const CAT_COLORS = {
-  'їжа': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  'transport': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  'розваги': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  'навчання': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-  "здоров'я": 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
-  'комунальні': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
-  'одяг': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  'інше': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+const CAT_COLOR = {
+  'їжа':        'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  'transport':  'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  'розваги':    'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  'навчання':   'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  "здоров'я":   'bg-rose-500/10 text-rose-400 border-rose-500/20',
+  'комунальні': 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+  'одяг':       'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  'інше':       'bg-zinc-500/10 text-zinc-500 border-zinc-700',
 }
 
-function MonobankSection({ userId, onSynced }) {
+function MonobankCard({ userId, onSynced }) {
   const [status, setStatus] = useState(null)
-  const [showTokenInput, setShowTokenInput] = useState(false)
+  const [showInput, setShowInput] = useState(false)
   const [token, setToken] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState(null) // { type: 'ok'|'err', text }
+  const [msg, setMsg] = useState(null)
 
-  const loadStatus = () => {
+  useEffect(() => {
     if (!userId) return
-    fetch(`${API}/monobank/status/${userId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(setStatus)
-      .catch(() => {})
-  }
+    fetch(`${API}/monobank/status/${userId}`).then(r => r.ok ? r.json() : null).then(setStatus).catch(() => {})
+  }, [userId])
 
-  useEffect(() => { loadStatus() }, [userId])
-
-  const handleSaveToken = async () => {
+  const saveToken = async () => {
     if (!token.trim() || saving) return
     setSaving(true); setMsg(null)
     try {
       const res = await fetch(`${API}/monobank/setup/${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token.trim() }),
       })
-      const data = await res.json()
-      if (!res.ok) { setMsg({ type: 'err', text: data.detail || 'Помилка' }); return }
-      setMsg({ type: 'ok', text: `Підключено: ${data.name}` })
-      setShowTokenInput(false); setToken('')
-      loadStatus()
-    } catch { setMsg({ type: 'err', text: 'Не вдалося підключитись' }) }
+      const d = await res.json()
+      if (!res.ok) { setMsg({ err: true, text: d.detail || 'Помилка' }); return }
+      setMsg({ err: false, text: `Підключено: ${d.name}` })
+      setShowInput(false); setToken('')
+      setStatus({ connected: true })
+    } catch { setMsg({ err: true, text: 'Помилка підключення' }) }
     finally { setSaving(false) }
   }
 
-  const handleSync = async () => {
+  const sync = async () => {
     if (syncing) return
     setSyncing(true); setMsg(null)
     try {
       const res = await fetch(`${API}/monobank/sync/${userId}`, { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) { setMsg({ type: 'err', text: data.detail || 'Помилка синхронізації' }); return }
-      setMsg({ type: 'ok', text: `Імпортовано: ${data.imported} транзакцій (пропущено дублів: ${data.skipped})` })
+      const d = await res.json()
+      if (!res.ok) { setMsg({ err: true, text: d.detail || 'Помилка синхронізації' }); return }
+      setMsg({ err: false, text: `Імпортовано ${d.imported} нових транзакцій` })
       onSynced()
-    } catch { setMsg({ type: 'err', text: 'Помилка під час синхронізації' }) }
+    } catch { setMsg({ err: true, text: 'Помилка синхронізації' }) }
     finally { setSyncing(false) }
   }
 
-  const handleDisconnect = async () => {
+  const disconnect = async () => {
     await fetch(`${API}/monobank/disconnect/${userId}`, { method: 'DELETE' })
-    setStatus(null); loadStatus()
-    setMsg({ type: 'ok', text: 'Monobank відключено' })
+    setStatus({ connected: false }); setMsg({ err: false, text: 'Відключено' })
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">🏦</span>
-        <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">Monobank</span>
-        {status?.connected && (
-          <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-            Підключено
-          </span>
-        )}
+    <div className="card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🏦</span>
+          <span className="text-sm font-medium text-zinc-200">Monobank</span>
+        </div>
+        {status?.connected && <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Підключено</span>}
       </div>
 
       {msg && (
-        <p className={`text-xs px-3 py-2 rounded-lg mb-3 ${msg.type === 'ok'
-          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-          : 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400'}`}>
+        <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${msg.err ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'}`}>
           {msg.text}
-        </p>
+        </div>
       )}
 
       {!status?.connected ? (
-        showTokenInput ? (
+        showInput ? (
           <div className="space-y-2">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Відкрий Monobank → Налаштування → Інше → API → скопіюй токен
-            </p>
-            <input
-              type="text"
-              placeholder="u…"
-              value={token}
-              onChange={e => setToken(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm font-mono"
-            />
+            <p className="text-xs text-zinc-500">Monobank → Налаштування → Інше → API → скопіюй токен</p>
+            <input value={token} onChange={e => setToken(e.target.value)} placeholder="Твій токен..." className="input font-mono text-xs" />
             <div className="flex gap-2">
-              <button onClick={handleSaveToken} disabled={saving || !token.trim()}
-                className="flex-1 py-1.5 bg-emerald-600 text-white rounded-lg text-sm disabled:opacity-50">
+              <button onClick={saveToken} disabled={saving || !token.trim()} className="btn-primary flex-1 text-xs py-2">
                 {saving ? 'Перевірка...' : 'Підключити'}
               </button>
-              <button onClick={() => { setShowTokenInput(false); setToken('') }}
-                className="flex-1 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm">
-                Скасувати
-              </button>
+              <button onClick={() => { setShowInput(false); setToken('') }} className="btn-outline flex-1 text-xs py-2">Скасувати</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setShowTokenInput(true)}
-            className="w-full py-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 transition-colors">
+          <button onClick={() => setShowInput(true)} className="w-full border border-dashed border-zinc-700 hover:border-zinc-500 rounded-lg py-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
             + Підключити Monobank
           </button>
         )
       ) : (
         <div className="flex gap-2">
-          <button onClick={handleSync} disabled={syncing}
-            className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium disabled:opacity-60">
+          <button onClick={sync} disabled={syncing} className="btn-primary flex-1 text-xs py-2">
             {syncing ? 'Синхронізація...' : '↻ Синхронізувати (30 дн.)'}
           </button>
-          <button onClick={handleDisconnect}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl text-sm text-gray-500 hover:text-rose-600 hover:border-rose-300">
-            ✕
-          </button>
+          <button onClick={disconnect} className="btn-ghost text-xs px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10">✕</button>
         </div>
       )}
     </div>
@@ -160,144 +125,149 @@ function MonobankSection({ userId, onSynced }) {
 }
 
 export default function Finance() {
-  const { t } = useTranslation()
   const userId = useStore((s) => s.userId)
   const [data, setData] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState('UAH')
   const [category, setCategory] = useState('авто')
-  const [description, setDescription] = useState('')
+  const [desc, setDesc] = useState('')
+  const [hint, setHint] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [categoryHint, setCategoryHint] = useState(null)
 
   const load = () => {
     if (!userId) return
-    fetch(`${API}/finance/summary/${userId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(setData)
-      .catch(() => {})
+    fetch(`${API}/finance/summary/${userId}`).then(r => r.ok ? r.json() : null).then(setData).catch(() => {})
   }
-
   useEffect(() => { load() }, [userId])
 
-  const handleDescriptionChange = (val) => {
-    setDescription(val)
-    if (category === 'авто') setCategoryHint(guessCategory(val))
+  const onDescChange = (v) => {
+    setDesc(v)
+    if (category === 'авто') setHint(guessCategory(v))
   }
 
   const save = async () => {
     if (!amount || saving) return
     setSaving(true)
-    const bodyCategory = category === 'авто' ? null : category
     await fetch(`${API}/finance/transaction/${userId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: parseFloat(amount), currency, category: bodyCategory, description }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: parseFloat(amount), currency, category: category === 'авто' ? null : category, description: desc }),
     })
-    setSaving(false)
-    setShowForm(false)
-    setAmount(''); setDescription(''); setCategory('авто'); setCategoryHint(null)
+    setSaving(false); setShowForm(false); setAmount(''); setDesc(''); setCategory('авто'); setHint(null)
     load()
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-16">
-      <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2">
-        <span className="text-xl">💰</span>
-        <h1 className="font-bold text-xl text-gray-900 dark:text-gray-100">{t('finance.title')}</h1>
-        <button onClick={() => setShowForm(!showForm)}
-          className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white">
-          + {t('finance.add_transaction')}
+    <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Фінанси</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">Витрати та транзакції</p>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Додати
         </button>
-      </header>
+      </div>
 
-      <div className="flex-1 px-4 py-4 space-y-5">
+      <div className="space-y-4">
         {/* Add form */}
         {showForm && (
-          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 p-4 space-y-3">
-            <div className="flex gap-2">
-              <input type="number" min="0" placeholder={t('finance.amount_label')} value={amount}
-                onChange={e => setAmount(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm" />
-              <select value={currency} onChange={e => setCurrency(e.target.value)}
-                className="px-2 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm">
-                {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+          <div className="card p-5 animate-fade-in">
+            <h3 className="text-sm font-medium text-zinc-200 mb-4">Нова витрата</h3>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <input type="number" min="0" placeholder="Сума" value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  className="input flex-1" />
+                <select value={currency} onChange={e => setCurrency(e.target.value)}
+                  className="input w-24 bg-zinc-900">
+                  {['UAH','USD','EUR'].map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <select value={category} onChange={e => { setCategory(e.target.value); setHint(null) }}
+                className="input bg-zinc-900">
+                {CATS.map(c => <option key={c}>{c === 'авто' ? '✨ Авто-визначення' : c}</option>)}
               </select>
-            </div>
-            <select value={category} onChange={e => { setCategory(e.target.value); setCategoryHint(null) }}
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm">
-              {CATEGORIES.map(c => <option key={c}>{c === 'авто' ? '✨ Авто (визначити автоматично)' : c}</option>)}
-            </select>
-            <div>
-              <input type="text" placeholder={t('finance.description_label')} value={description}
-                onChange={e => handleDescriptionChange(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm" />
-              {category === 'авто' && categoryHint && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 ml-1">
-                  ✓ Схоже на: <strong>{categoryHint}</strong>
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={save} disabled={saving}
-                className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-                {t('finance.save')}
-              </button>
-              <button onClick={() => setShowForm(false)}
-                className="flex-1 py-2 border border-gray-300 dark:border-gray-700 rounded-xl text-sm">
-                {t('finance.cancel')}
-              </button>
+              <div>
+                <input type="text" placeholder="Опис (ATB, Uber, Netflix...)" value={desc}
+                  onChange={e => onDescChange(e.target.value)}
+                  className="input" />
+                {category === 'авто' && hint && (
+                  <p className="text-xs text-blue-400 mt-1.5 ml-0.5">✓ Виявлено: <strong>{hint}</strong></p>
+                )}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={save} disabled={saving || !amount} className="btn-primary flex-1">{saving ? 'Збереження...' : 'Зберегти'}</button>
+                <button onClick={() => setShowForm(false)} className="btn-outline flex-1">Скасувати</button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Monobank */}
-        <MonobankSection userId={userId} onSynced={load} />
+        <MonobankCard userId={userId} onSynced={load} />
 
         {/* Summary */}
         {data && (
-          <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 p-4">
-            <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{t('finance.total')}</p>
-            <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
-              {data.total_spent?.toFixed(0)} <span className="text-lg font-normal">{data.currency}</span>
-            </p>
+          <div className="card p-5">
+            <div className="flex items-end justify-between mb-4">
+              <div>
+                <p className="section-label mb-1">Загальні витрати</p>
+                <div className="stat-value">{data.total_spent?.toFixed(0)}
+                  <span className="text-sm font-normal text-zinc-500 ml-1.5">{data.currency}</span>
+                </div>
+              </div>
+              <span className="text-2xl">💸</span>
+            </div>
             {data.by_category && Object.keys(data.by_category).length > 0 && (
-              <div className="mt-3 space-y-1">
-                {Object.entries(data.by_category)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([cat, amt]) => (
-                    <div key={cat} className="flex items-center gap-2 text-sm">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${CAT_COLORS[cat] || CAT_COLORS['інше']}`}>{cat}</span>
-                      <span className="ml-auto font-medium">{amt.toFixed(0)}</span>
+              <div className="space-y-2 pt-3 border-t border-white/[0.06]">
+                {Object.entries(data.by_category).sort(([,a],[,b]) => b - a).map(([cat, amt]) => {
+                  const pct = Math.round((amt / data.total_spent) * 100)
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className={`badge border ${CAT_COLOR[cat] || CAT_COLOR['інше']}`}>{cat}</span>
+                        <div className="flex items-center gap-2 text-zinc-400">
+                          <span>{pct}%</span>
+                          <span className="font-medium text-zinc-300">{amt.toFixed(0)}</span>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                  ))}
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* Transactions */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-            {t('finance.recent_title')}
-          </h2>
+        {/* Transactions list */}
+        <div className="card overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06]">
+            <p className="section-label">Останні транзакції</p>
+          </div>
           {data?.recent_transactions?.length ? (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-white/[0.04]">
               {data.recent_transactions.map((tx, i) => (
-                <li key={i} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm">
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${CAT_COLORS[tx.category] || CAT_COLORS['інше']}`}>
-                    {tx.category}
-                  </span>
-                  <span className="flex-1 text-gray-600 dark:text-gray-400 truncate">{tx.description || tx.category}</span>
-                  <span className="font-semibold shrink-0">{tx.amount.toFixed(0)} {tx.currency}</span>
+                <li key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors">
+                  <span className={`badge shrink-0 border ${CAT_COLOR[tx.category] || CAT_COLOR['інше']}`}>{tx.category}</span>
+                  <span className="flex-1 text-sm text-zinc-400 truncate">{tx.description || tx.category}</span>
+                  <span className="text-sm font-semibold text-zinc-200 shrink-0">{tx.amount.toFixed(0)} <span className="text-zinc-500 font-normal">{tx.currency}</span></span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-400">{t('finance.no_transactions')}</p>
+            <div className="px-5 py-8 text-center text-sm text-zinc-600">
+              Транзакцій ще немає — додай першу вище
+            </div>
           )}
-        </section>
+        </div>
       </div>
     </div>
   )
