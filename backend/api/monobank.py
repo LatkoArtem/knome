@@ -2,8 +2,10 @@
 import logging
 from datetime import date, timedelta
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from api.limiter import limiter
 
 from auth.db import save_integration, get_integration, delete_integration
 from graph.queries import user_exists, add_transaction, get_recent_transactions
@@ -50,7 +52,8 @@ async def monobank_setup(user_id: str, body: SetupRequest):
 
 
 @router.post("/sync/{user_id}")
-async def monobank_sync(user_id: str, days: int = 30):
+@limiter.limit("1/minute")
+async def monobank_sync(request: Request, user_id: str, days: int = 30):
     """Sync transactions from Monobank for the last N days (max 30)."""
     if not user_exists(user_id):
         raise HTTPException(status_code=404, detail="User not found")

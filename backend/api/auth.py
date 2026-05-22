@@ -1,9 +1,11 @@
 """Auth endpoints: register, login, me."""
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, field_validator
+
+from api.limiter import limiter
 
 from auth.db import create_auth_user, get_auth_by_email, get_auth_by_user_id, email_exists
 from auth.security import hash_password, verify_password, create_access_token, decode_token
@@ -55,7 +57,8 @@ def _get_current_user_id(credentials: HTTPAuthorizationCredentials | None = Depe
 
 
 @router.post("/register", response_model=AuthResponse)
-async def register(body: RegisterRequest):
+@limiter.limit("3/minute")
+async def register(request: Request, body: RegisterRequest):
     if email_exists(body.email):
         raise HTTPException(status_code=409, detail="Email вже використовується")
 
@@ -72,7 +75,8 @@ async def register(body: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest):
     auth = get_auth_by_email(body.email)
     if not auth or not verify_password(body.password, auth["password_hash"]):
         raise HTTPException(status_code=401, detail="Невірний email або пароль")
