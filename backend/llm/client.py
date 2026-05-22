@@ -11,7 +11,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "llama3.2"
+DEFAULT_MODEL = "qwen2.5:7b"   # best UA support + quality on CPU; fallback: gemma3:4b
 VISION_MODEL = "llava"
 
 _clients: dict[str, ChatOllama] = {}

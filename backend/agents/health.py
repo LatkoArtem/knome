@@ -3,6 +3,7 @@ from graph.queries import add_checkin, add_food_entry, get_recent_checkins
 from llm.client import llm_respond
 from llm.prompts import HEALTH_SYSTEM
 from llm.context import format_context
+from integrations.food import search_food, estimate_portion, calculate_nutrients
 
 _CHECKIN_KW = ["спав", "спала", "настрій", "самопочуття", "слept", "mood", "check-in", "чекін"]
 _FOOD_KW = ["з'їв", "з'їла", "поїв", "поїла", "ate", "food", "їжа:", "з'їм"]
@@ -51,11 +52,39 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
     if any(w in text for w in _FOOD_KW):
         food_name = _parse_food_name(text)
         if food_name:
-            add_food_entry(user_id, food_name)
-            fallback = f"Записав їжу: {food_name}. Харчування оновлено!"
-            action = f"Logged food entry: «{food_name}»."
+            # Look up nutrition data from Open Food Facts
+            nutrition = await search_food(food_name)
+            if nutrition:
+                portion = estimate_portion(food_name, user_message)
+                macros = calculate_nutrients(nutrition, portion)
+                add_food_entry(
+                    user_id, food_name,
+                    calories=macros["calories"],
+                    protein=macros["protein"],
+                    fat=macros["fat"],
+                    carbs=macros["carbs"],
+                    method="openfoodfacts",
+                )
+                fallback = (
+                    f"Записав: {food_name} (~{portion}г) — "
+                    f"{macros['calories']} ккал | "
+                    f"Б: {macros['protein']}г | "
+                    f"Ж: {macros['fat']}г | "
+                    f"В: {macros['carbs']}г"
+                )
+                action = (
+                    f"Logged food: «{food_name}» (~{portion}g portion). "
+                    f"Nutrition: {macros['calories']} kcal, "
+                    f"protein {macros['protein']}g, fat {macros['fat']}g, carbs {macros['carbs']}g. Saved."
+                )
+            else:
+                add_food_entry(user_id, food_name, method="manual")
+                fallback = f"Записав їжу: {food_name}. Калорії не знайдено в базі."
+                action = f"Logged food: «{food_name}». Nutrition data not found in Open Food Facts."
+
             response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
             return response or fallback, []
+
         fallback = "Що їв? Наприклад: «З'їв гречку з куркою»"
         action = "User wants to log food but no food name detected."
         response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))

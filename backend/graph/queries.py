@@ -68,6 +68,7 @@ def get_user_context(user_id: str) -> dict:
     checkins = get_recent_checkins(user_id, limit=7)
     sessions = get_learning_sessions(user_id, limit=7)
     transactions = get_recent_transactions(user_id, limit=20)
+    food_entries = get_recent_food_entries(user_id, limit=10)
 
     health_ctx: dict = {}
     if checkins:
@@ -93,12 +94,19 @@ def get_user_context(user_id: str) -> dict:
         finance_ctx["top_categories"] = sorted(by_cat, key=lambda k: -by_cat[k])[:3]
         finance_ctx["transaction_count"] = len(transactions)
 
+    nutrition_ctx: dict = {}
+    if food_entries:
+        total_kcal = sum(f["calories"] for f in food_entries if f["calories"])
+        nutrition_ctx["entries_today"] = len(food_entries)
+        nutrition_ctx["total_calories"] = round(total_kcal, 1)
+
     patterns = _detect_patterns(health_ctx, learning_ctx, finance_ctx)
 
     return {
         "user": user,
         "goals": goals,
         "health": health_ctx,
+        "nutrition": nutrition_ctx,
         "learning": learning_ctx,
         "finance": finance_ctx,
         "patterns": patterns,
@@ -252,15 +260,43 @@ def add_checkin(user_id: str, sleep_hours: float, mood: int, energy: int, notes:
     return cid
 
 
-def add_food_entry(user_id: str, name: str, calories: float = 0.0) -> str:
+def add_food_entry(
+    user_id: str,
+    name: str,
+    calories: float = 0.0,
+    protein: float = 0.0,
+    fat: float = 0.0,
+    carbs: float = 0.0,
+    method: str = "manual",
+) -> str:
     conn = get_connection()
     fid = str(uuid.uuid4())
     conn.execute(
-        "CREATE (:FoodEntry {id: $id, date: $date, name: $name, calories: $cal, protein: 0.0, fat: 0.0, carbs: 0.0, method: 'manual'})",
-        {"id": fid, "date": _now(), "name": name, "cal": calories},
+        "CREATE (:FoodEntry {id: $id, date: $date, name: $name, calories: $cal, "
+        "protein: $prot, fat: $fat, carbs: $carbs, method: $method})",
+        {
+            "id": fid, "date": _now(), "name": name,
+            "cal": calories, "prot": protein, "fat": fat, "carbs": carbs,
+            "method": method,
+        },
     )
     conn.execute(
         "MATCH (u:User {id: $uid}), (f:FoodEntry {id: $fid}) CREATE (u)-[:LOGGED_FOOD]->(f)",
         {"uid": user_id, "fid": fid},
     )
     return fid
+
+
+def get_recent_food_entries(user_id: str, limit: int = 10) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(
+        conn,
+        f"MATCH (u:User {{id: $uid}})-[:LOGGED_FOOD]->(f:FoodEntry) "
+        f"RETURN f.name, f.calories, f.protein, f.fat, f.carbs, f.date "
+        f"ORDER BY f.date DESC LIMIT {limit}",
+        {"uid": user_id},
+    )
+    return [
+        {"name": r[0], "calories": r[1], "protein": r[2], "fat": r[3], "carbs": r[4], "date": r[5]}
+        for r in rows
+    ]

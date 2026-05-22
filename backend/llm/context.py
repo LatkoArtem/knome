@@ -32,6 +32,10 @@ def format_context(ctx: dict) -> str:
         if parts:
             lines.append(f"Health (7d): {', '.join(parts)}")
 
+    nutrition = ctx.get("nutrition", {})
+    if nutrition and nutrition.get("total_calories"):
+        lines.append(f"Nutrition (today): {nutrition['total_calories']} kcal logged ({nutrition.get('entries_today', 0)} entries)")
+
     learning = ctx.get("learning", {})
     if learning:
         total = learning.get("total_minutes", 0)
