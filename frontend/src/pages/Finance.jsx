@@ -6,7 +6,6 @@ const API = 'http://localhost:8000/api'
 
 const CATEGORIES = ['авто', 'їжа', 'transport', 'розваги', 'навчання', "здоров'я", 'комунальні', 'одяг', 'інше']
 
-// Client-side keyword hints for instant feedback (mirrors backend rules, subset)
 const CAT_HINTS = [
   { cat: "їжа",       words: ["кава","pizza","піца","ресторан","кафе","продукти","atb","silpo","delivery","glovo","sushi","burger","їжа","обід"] },
   { cat: "transport", words: ["uber","bolt","uklon","таксі","метро","бензин","bus","parking","паркінг","поїзд"] },
@@ -25,6 +24,7 @@ function guessCategory(desc) {
   }
   return null
 }
+
 const CURRENCIES = ['UAH', 'USD', 'EUR']
 
 const CAT_COLORS = {
@@ -34,7 +34,129 @@ const CAT_COLORS = {
   'навчання': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
   "здоров'я": 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
   'комунальні': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
+  'одяг': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
   'інше': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+}
+
+function MonobankSection({ userId, onSynced }) {
+  const [status, setStatus] = useState(null)
+  const [showTokenInput, setShowTokenInput] = useState(false)
+  const [token, setToken] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null) // { type: 'ok'|'err', text }
+
+  const loadStatus = () => {
+    if (!userId) return
+    fetch(`${API}/monobank/status/${userId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(setStatus)
+      .catch(() => {})
+  }
+
+  useEffect(() => { loadStatus() }, [userId])
+
+  const handleSaveToken = async () => {
+    if (!token.trim() || saving) return
+    setSaving(true); setMsg(null)
+    try {
+      const res = await fetch(`${API}/monobank/setup/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setMsg({ type: 'err', text: data.detail || 'Помилка' }); return }
+      setMsg({ type: 'ok', text: `Підключено: ${data.name}` })
+      setShowTokenInput(false); setToken('')
+      loadStatus()
+    } catch { setMsg({ type: 'err', text: 'Не вдалося підключитись' }) }
+    finally { setSaving(false) }
+  }
+
+  const handleSync = async () => {
+    if (syncing) return
+    setSyncing(true); setMsg(null)
+    try {
+      const res = await fetch(`${API}/monobank/sync/${userId}`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setMsg({ type: 'err', text: data.detail || 'Помилка синхронізації' }); return }
+      setMsg({ type: 'ok', text: `Імпортовано: ${data.imported} транзакцій (пропущено дублів: ${data.skipped})` })
+      onSynced()
+    } catch { setMsg({ type: 'err', text: 'Помилка під час синхронізації' }) }
+    finally { setSyncing(false) }
+  }
+
+  const handleDisconnect = async () => {
+    await fetch(`${API}/monobank/disconnect/${userId}`, { method: 'DELETE' })
+    setStatus(null); loadStatus()
+    setMsg({ type: 'ok', text: 'Monobank відключено' })
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg">🏦</span>
+        <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">Monobank</span>
+        {status?.connected && (
+          <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+            Підключено
+          </span>
+        )}
+      </div>
+
+      {msg && (
+        <p className={`text-xs px-3 py-2 rounded-lg mb-3 ${msg.type === 'ok'
+          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+          : 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400'}`}>
+          {msg.text}
+        </p>
+      )}
+
+      {!status?.connected ? (
+        showTokenInput ? (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Відкрий Monobank → Налаштування → Інше → API → скопіюй токен
+            </p>
+            <input
+              type="text"
+              placeholder="u…"
+              value={token}
+              onChange={e => setToken(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-sm font-mono"
+            />
+            <div className="flex gap-2">
+              <button onClick={handleSaveToken} disabled={saving || !token.trim()}
+                className="flex-1 py-1.5 bg-emerald-600 text-white rounded-lg text-sm disabled:opacity-50">
+                {saving ? 'Перевірка...' : 'Підключити'}
+              </button>
+              <button onClick={() => { setShowTokenInput(false); setToken('') }}
+                className="flex-1 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm">
+                Скасувати
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setShowTokenInput(true)}
+            className="w-full py-2 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 transition-colors">
+            + Підключити Monobank
+          </button>
+        )
+      ) : (
+        <div className="flex gap-2">
+          <button onClick={handleSync} disabled={syncing}
+            className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium disabled:opacity-60">
+            {syncing ? 'Синхронізація...' : '↻ Синхронізувати (30 дн.)'}
+          </button>
+          <button onClick={handleDisconnect}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl text-sm text-gray-500 hover:text-rose-600 hover:border-rose-300">
+            ✕
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Finance() {
@@ -75,10 +197,7 @@ export default function Finance() {
     })
     setSaving(false)
     setShowForm(false)
-    setAmount('')
-    setDescription('')
-    setCategory('авто')
-    setCategoryHint(null)
+    setAmount(''); setDescription(''); setCategory('авто'); setCategoryHint(null)
     load()
   }
 
@@ -132,6 +251,9 @@ export default function Finance() {
             </div>
           </div>
         )}
+
+        {/* Monobank */}
+        <MonobankSection userId={userId} onSynced={load} />
 
         {/* Summary */}
         {data && (

@@ -1,6 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from graph.schema import init_schema
 from api.auth import router as auth_router
@@ -11,15 +16,25 @@ from api.finance import router as finance_router
 from api.health_domain import router as health_domain_router
 from api.insights import router as insights_router
 from api.ml import router as ml_router
+from api.monobank import router as monobank_router
+from api.user import router as user_router
 from triggers import engine as trigger_engine
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_schema()
     trigger_engine.start()
+    logger.info("Knome API started")
     yield
     trigger_engine.stop()
+    logger.info("Knome API stopped")
 
 
 app = FastAPI(title="Knome API", version="0.1.0", lifespan=lifespan)
@@ -32,7 +47,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Внутрішня помилка сервера. Спробуй пізніше."},
+    )
+
+
 app.include_router(auth_router, prefix="/api")
+app.include_router(monobank_router, prefix="/api")
 app.include_router(chat_router)
 app.include_router(health_router, prefix="/api")
 app.include_router(learning_router, prefix="/api")
@@ -40,3 +66,4 @@ app.include_router(finance_router, prefix="/api")
 app.include_router(health_domain_router, prefix="/api")
 app.include_router(insights_router, prefix="/api")
 app.include_router(ml_router, prefix="/api")
+app.include_router(user_router, prefix="/api")
