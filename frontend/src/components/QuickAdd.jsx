@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, X, Wallet, Heart, BookOpen } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
@@ -30,11 +31,17 @@ const ACTIONS = [
 ]
 
 export default function QuickAdd() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Hide on pages that already have dedicated add forms
+  const ACTIONS = [
+    { label: t('quickadd.expense'), Icon: Wallet,   color: 'bg-emerald-600 hover:bg-emerald-500', ring: 'ring-emerald-500/30', action: 'finance' },
+    { label: t('quickadd.checkin'), Icon: Heart,    color: 'bg-rose-600 hover:bg-rose-500',       ring: 'ring-rose-500/30',    action: 'health' },
+    { label: t('quickadd.session'), Icon: BookOpen, color: 'bg-indigo-600 hover:bg-indigo-500',   ring: 'ring-indigo-500/30',  action: 'learning' },
+  ]
+
   const hidden = ['/login', '/onboarding'].includes(location.pathname)
   if (hidden) return null
 
@@ -45,7 +52,6 @@ export default function QuickAdd() {
 
   return (
     <div className="lg:hidden fixed bottom-16 right-4 z-40 flex flex-col items-end gap-2">
-      {/* Action buttons */}
       {open && (
         <div className="flex flex-col items-end gap-2 animate-fade-in">
           {ACTIONS.map(({ label, Icon, color, ring, action }) => (

@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
+import { Zap } from 'lucide-react'
 
 const API = 'http://localhost:8000/api'
 
 export default function Login() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const setAuth = useStore((s) => s.setAuth)
   const [mode, setMode] = useState('login')
@@ -14,69 +17,52 @@ export default function Login() {
 
   const field = (key) => ({
     value: form[key],
-    onChange: (e) => setForm(f => ({ ...f, [key]: e.target.value }),
-    )
+    onChange: (e) => setForm(f => ({ ...f, [key]: e.target.value }))
   })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
+    setError(''); setLoading(true)
     const endpoint = mode === 'login' ? '/auth/login' : '/auth/register'
     const body = mode === 'login'
       ? { email: form.email, password: form.password }
       : { name: form.name, email: form.email, password: form.password }
     try {
       const res = await fetch(`${API}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Помилка'); return }
       setAuth({ user_id: data.user_id, token: data.token, email: data.email, name: data.name })
       navigate('/chat')
-    } catch {
-      setError('Не вдалося підключитись до сервера')
-    } finally {
-      setLoading(false)
-    }
+    } catch { setError('Не вдалося підключитись до сервера') }
+    finally { setLoading(false) }
   }
 
   return (
     <div className="min-h-screen bg-[#09090B] flex flex-col items-center justify-center px-4">
-      {/* Subtle radial gradient behind the card */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div className="w-[600px] h-[600px] rounded-full bg-blue-600/5 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-sm">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center mb-3 shadow-lg shadow-blue-600/20">
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-            </svg>
+            <Zap className="w-5 h-5 text-white" fill="white" />
           </div>
           <h1 className="text-xl font-semibold text-zinc-100 tracking-tight">Knome</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">Персональний AI-агент</p>
+          <p className="text-sm text-zinc-500 mt-0.5">{t('login.subtitle')}</p>
         </div>
 
-        {/* Card */}
         <div className="card p-6">
-          {/* Toggle */}
           <div className="flex gap-1 bg-zinc-800/60 rounded-lg p-1 mb-5">
             {['login', 'register'].map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError('') }}
+              <button key={m} onClick={() => { setMode(m); setError('') }}
                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all duration-150 ${
-                  mode === m
-                    ? 'bg-zinc-700 text-zinc-100 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                {m === 'login' ? 'Вхід' : 'Реєстрація'}
+                  mode === m ? 'bg-zinc-700 text-zinc-100 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+                }`}>
+                {m === 'login' ? t('login.tab_login') : t('login.tab_register')}
               </button>
             ))}
           </div>
@@ -84,18 +70,18 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === 'register' && (
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">Ім'я</label>
-                <input {...field('name')} type="text" required placeholder="Як тебе звати?" className="input" />
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5">{t('login.name_label')}</label>
+                <input {...field('name')} type="text" required placeholder={t('login.name_placeholder')} className="input" />
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">Email</label>
-              <input {...field('email')} type="email" required placeholder="you@example.com" className="input" />
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5">{t('login.email_label')}</label>
+              <input {...field('email')} type="email" required placeholder={t('login.email_placeholder')} className="input" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">Пароль</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5">{t('login.password_label')}</label>
               <input {...field('password')} type="password" required
-                placeholder={mode === 'register' ? 'Мінімум 6 символів' : '••••••••'}
+                placeholder={mode === 'register' ? t('login.password_placeholder_register') : t('login.password_placeholder_login')}
                 className="input" />
             </div>
 
@@ -110,17 +96,15 @@ export default function Login() {
 
             <button type="submit" disabled={loading} className="btn-primary w-full mt-1 py-2.5">
               {loading
-                ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Зачекай...</span>
-                : mode === 'login' ? 'Увійти' : 'Зареєструватись'
+                ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('login.btn_loading')}</span>
+                : mode === 'login' ? t('login.btn_login') : t('login.btn_register')
               }
             </button>
           </form>
         </div>
 
         <p className="text-center text-xs text-zinc-600 mt-4">
-          <Link to="/onboarding" className="hover:text-zinc-400 transition-colors">
-            Продовжити без реєстрації →
-          </Link>
+          <Link to="/onboarding" className="hover:text-zinc-400 transition-colors">{t('login.guest_link')}</Link>
         </p>
       </div>
     </div>
