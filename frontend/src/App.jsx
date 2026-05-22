@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from './store'
 import NavBar from './components/NavBar'
 import Chat from './pages/Chat'
+import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Learning from './pages/Learning'
@@ -12,12 +13,13 @@ import Health from './pages/Health'
 
 function PrivateRoute({ children }) {
   const userId = useStore((s) => s.userId)
-  return userId ? children : <Navigate to="/onboarding" replace />
+  return userId ? children : <Navigate to="/login" replace />
 }
 
 function LayoutWithNav({ children }) {
   const location = useLocation()
-  const showNav = location.pathname !== '/onboarding'
+  const noNav = ['/onboarding', '/login']
+  const showNav = !noNav.includes(location.pathname)
   return (
     <>
       {children}
@@ -43,6 +45,7 @@ export default function App() {
           <LanguageSync />
           <LayoutWithNav>
             <Routes>
+              <Route path="/login" element={<Login />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
               <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

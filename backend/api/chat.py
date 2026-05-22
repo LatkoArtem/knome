@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -40,6 +41,19 @@ def _init_session() -> Dict[str, Any]:
     }
 
 
+async def _stream_text(websocket: WebSocket, text: str, extra: Dict[str, Any] | None = None) -> None:
+    """Stream text word-by-word, then send done signal."""
+    words = text.split(" ")
+    for i, word in enumerate(words):
+        token = word if i == len(words) - 1 else word + " "
+        await websocket.send_json({"token": token})
+        await asyncio.sleep(0.03)
+    done_payload: Dict[str, Any] = {"done": True}
+    if extra:
+        done_payload.update(extra)
+    await websocket.send_json(done_payload)
+
+
 @router.websocket("/ws/chat/{user_id}")
 async def websocket_chat(websocket: WebSocket, user_id: str):
     await websocket.accept()
@@ -65,10 +79,10 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                 "saved": True,
             }
             greeting = f"З поверненням, {name}! Чим можу допомогти?" if name else "З поверненням! Чим можу допомогти?"
-            await websocket.send_json({"text": greeting})
+            await _stream_text(websocket, greeting)
         else:
             _sessions[user_id] = _init_session()
-            await websocket.send_json({"text": INITIAL_GREETING})
+            await _stream_text(websocket, INITIAL_GREETING)
 
     try:
         while True:
@@ -103,11 +117,10 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                     "context_answers": result.get("context_answers") or session["context_answers"],
                     "saved": result.get("saved", session["saved"]),
                 }
-                payload: Dict[str, Any] = {"text": result["response"]}
+                extra = None
                 if result["phase"] == "done" and result.get("saved"):
-                    payload["onboarding_complete"] = True
-                    payload["user_id"] = user_id
-                await websocket.send_json(payload)
+                    extra = {"onboarding_complete": True, "user_id": user_id}
+                await _stream_text(websocket, result["response"], extra=extra)
 
             else:
                 # Main chat — orchestrator
@@ -120,7 +133,7 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                     "response": "",
                     "graph_updates": [],
                 })
-                await websocket.send_json({"text": result["response"]})
+                await _stream_text(websocket, result["response"])
 
     except WebSocketDisconnect:
         pass

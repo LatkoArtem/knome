@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from graph.schema import init_schema
+from api.auth import router as auth_router
 from api.chat import router as chat_router
 from api.health import router as health_router
 from api.learning import router as learning_router
@@ -31,6 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router)
 app.include_router(health_router, prefix="/api")
 app.include_router(learning_router, prefix="/api")

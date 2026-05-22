@@ -15,10 +15,12 @@ export default function Onboarding() {
   const [input, setInput] = useState('')
   const [connected, setConnected] = useState(false)
   const [done, setDone] = useState(false)
+  const [streamingContent, setStreamingContent] = useState('')
 
   const ws = useRef(null)
   const userIdRef = useRef(generateUserId())
   const bottomRef = useRef(null)
+  const streamingRef = useRef('')
 
   useEffect(() => {
     const uid = userIdRef.current
@@ -30,13 +32,29 @@ export default function Onboarding() {
 
     socket.onmessage = (e) => {
       const data = JSON.parse(e.data)
-      if (data.text) {
+
+      if (data.token !== undefined) {
+        streamingRef.current += data.token
+        setStreamingContent(streamingRef.current)
+      } else if (data.done) {
+        if (streamingRef.current) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: streamingRef.current }])
+          streamingRef.current = ''
+          setStreamingContent('')
+        }
+        if (data.onboarding_complete) {
+          setDone(true)
+          setUserId(data.user_id)
+          setTimeout(() => navigate('/chat'), 1800)
+        }
+      } else if (data.text) {
+        // Fallback: non-streaming message
         setMessages((prev) => [...prev, { role: 'assistant', content: data.text }])
-      }
-      if (data.onboarding_complete) {
-        setDone(true)
-        setUserId(data.user_id)
-        setTimeout(() => navigate('/chat'), 1800)
+        if (data.onboarding_complete) {
+          setDone(true)
+          setUserId(data.user_id)
+          setTimeout(() => navigate('/chat'), 1800)
+        }
       }
     }
 
@@ -45,7 +63,7 @@ export default function Onboarding() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, streamingContent])
 
   const handleSend = () => {
     if (!input.trim() || !connected || done) return
@@ -57,54 +75,65 @@ export default function Onboarding() {
 
   return (
     <div className="flex flex-col h-screen">
-        <header className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-          <span className="font-semibold text-lg text-primary-600 dark:text-primary-400">Knome</span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">Знайомство</span>
-          {!connected && (
-            <span className="ml-auto text-xs text-yellow-500">З'єднання...</span>
-          )}
-        </header>
+      <header className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+        <span className="font-semibold text-lg text-primary-600 dark:text-primary-400">Knome</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">Знайомство</span>
+        {!connected && (
+          <span className="ml-auto text-xs text-yellow-500">З'єднання...</span>
+        )}
+      </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`max-w-[78%] px-4 py-2 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-primary-600 text-white rounded-br-sm'
-                    : 'bg-gray-100 dark:bg-gray-800 rounded-bl-sm'
-                }`}
-              >
-                {msg.content}
-              </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`max-w-[78%] px-4 py-2 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${
+                msg.role === 'user'
+                  ? 'bg-primary-600 text-white rounded-br-sm'
+                  : 'bg-gray-100 dark:bg-gray-800 rounded-bl-sm text-gray-800 dark:text-gray-200'
+              }`}
+            >
+              {msg.content}
             </div>
-          ))}
-          {done && (
-            <div className="flex justify-center">
-              <span className="text-xs text-gray-400 dark:text-gray-500">Переходимо до чату...</span>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
+          </div>
+        ))}
 
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex gap-2">
-          <input
-            className="flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:opacity-50"
-            placeholder={connected ? 'Напиши відповідь...' : "З'єднання..."}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            disabled={!connected || done}
-            autoFocus
-          />
-          <button
-            onClick={handleSend}
-            disabled={!connected || !input.trim() || done}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
-          >
-            Надіслати
-          </button>
-        </div>
+        {/* Streaming bubble */}
+        {streamingContent && (
+          <div className="flex justify-start">
+            <div className="max-w-[78%] px-4 py-2 rounded-2xl text-sm bg-gray-100 dark:bg-gray-800 rounded-bl-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+              {streamingContent}
+              <span className="inline-block w-0.5 h-3.5 bg-gray-500 dark:bg-gray-400 ml-0.5 animate-pulse align-text-bottom" />
+            </div>
+          </div>
+        )}
+
+        {done && (
+          <div className="flex justify-center">
+            <span className="text-xs text-gray-400 dark:text-gray-500">Переходимо до чату...</span>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex gap-2">
+        <input
+          className="flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:opacity-50"
+          placeholder={connected ? 'Напиши відповідь...' : "З'єднання..."}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          disabled={!connected || done}
+          autoFocus
+        />
+        <button
+          onClick={handleSend}
+          disabled={!connected || !input.trim() || done}
+          className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+        >
+          Надіслати
+        </button>
+      </div>
     </div>
   )
 }
