@@ -42,6 +42,14 @@ export default function Chat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {messages.length === 0 && (
+          <div className="flex justify-start">
+            <div className="max-w-[75%] px-4 py-3 rounded-2xl text-sm bg-gray-100 dark:bg-gray-800 rounded-bl-sm text-gray-700 dark:text-gray-300">
+              Привіт! Я Knome 👋<br />
+              Запитай мене про навчання, фінанси або здоров'я — або просто розкажи як день пройшов.
+            </div>
+          </div>
+        )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div

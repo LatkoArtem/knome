@@ -44,7 +44,7 @@ export default function Finance() {
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState('UAH')
-  const [category, setCategory] = useState('їжа')
+  const [category, setCategory] = useState('авто')
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
   const [categoryHint, setCategoryHint] = useState(null)
