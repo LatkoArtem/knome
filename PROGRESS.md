@@ -104,15 +104,24 @@ ollama serve
   - bcrypt для хешування паролів, python-jose для JWT
 - ✅ **Login/Register сторінка** (`/login`) — toggle login/register форма
 - ✅ **Guest mode** — можна продовжити без реєстрації через `/onboarding`
+- ✅ **Monobank API** — `POST /api/monobank/setup`, `POST /api/monobank/sync`, `DELETE /api/monobank/disconnect`
+  - MCC → категорія (60+ MCC кодів), ML classifier fallback для "інше"
+  - Дедублікація транзакцій, конвертація копійок → гривні, фільтрація доходів
+  - Rate limit: 1 sync/хвилину (відповідає ліміту Monobank API)
+  - Finance сторінка: MonobankSection — підключити/sync/відключити
+- ✅ **Settings сторінка** (`/settings`) — профіль, тема, мова, logout, danger zone
+- ✅ **Data export** — `GET /api/user/export` → JSON з усіма даними
+- ✅ **Delete account** — `DELETE /api/user/delete` → повне видалення з Kuzu + SQLite
+- ✅ **Rate limiting** (slowapi) — 3/хв register, 10/хв login, 1/хв monobank sync
+- ✅ **Error Boundary** — React fallback при JS-помилках
+- ✅ **Structured logging** — basicConfig, global 500 handler з UA повідомленням
+- ✅ **.env.example** — шаблон з JWT_SECRET, DB paths, Ollama, Monobank token
 
 ### В процесі / Залишилось
 
-- ⬜ **Monobank API інтеграція** — webhook + API клієнт
-- ⬜ **Refresh token / token expiry** — зараз токен на 30 днів без рефрешу
-- ⬜ **WebSocket auth** — WS поки без JWT перевірки
-- ⬜ **Rate limiting** — API без обмежень
-- ⬜ **Env vars** — `JWT_SECRET`, `KUZU_DB_PATH` тільки з дефолтами
-- ⬜ **PostgreSQL/Neo4j** — для prod (поточно Kuzu/SQLite)
+- ⬜ **Refresh token** — зараз токен на 30 днів без рефрешу
+- ⬜ **WebSocket JWT** — WS поки без перевірки токена
+- ⬜ **PostgreSQL/Neo4j** — для prod (поточно Kuzu/SQLite, не планується без Docker)
 
 ---
 
