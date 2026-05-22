@@ -4,6 +4,7 @@ LLM-based with rule-based fallback — always returns something meaningful.
 """
 from llm.client import llm_respond
 from llm.context import format_context
+from graph.queries import get_due_reviews
 
 _SYSTEM = """You are Knome's insight engine. Analyze cross-domain user data and generate exactly 2-3 insights.
 
@@ -89,6 +90,25 @@ def _rule_based_insights(ctx: dict) -> list[dict]:
             "text": f"Сьогодні {kcal} ккал. Харчування впливає на енергію та концентрацію.",
             "domains": ["health"], "type": "tip", "priority": 3,
         })
+
+    # SM-2 due reviews insight
+    user = ctx.get("user", {})
+    user_id = user.get("id", "")
+    if user_id:
+        due = get_due_reviews(user_id)
+        if due:
+            overdue = [d for d in due if d["days_overdue"] > 0]
+            topics = ", ".join(d["topic_name"] for d in due[:3])
+            if overdue:
+                insights.append({
+                    "text": f"Пропущено повторення: {', '.join(d['topic_name'] for d in overdue[:2])}. Пам'ять зменшується без практики.",
+                    "domains": ["learning"], "type": "sm2", "priority": 1,
+                })
+            else:
+                insights.append({
+                    "text": f"Сьогодні до повторення: {topics}. Займе 5-10 хвилин.",
+                    "domains": ["learning"], "type": "sm2", "priority": 2,
+                })
 
     # Empty state
     if not insights:

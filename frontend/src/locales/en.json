@@ -46,7 +46,9 @@
     "save": "Save",
     "cancel": "Cancel",
     "no_goals": "No goals yet. Add your first!",
-    "no_sessions": "No sessions yet."
+    "no_sessions": "No sessions yet.",
+    "due_title": "Due for review",
+    "week_total": "This week: {{minutes}} min ({{sessions}} sessions)"
   },
   "finance": {
     "title": "Finance",

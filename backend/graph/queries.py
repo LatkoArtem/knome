@@ -287,6 +287,120 @@ def add_food_entry(
     return fid
 
 
+# --- SM-2 Spaced Repetition ---
+
+def get_topic_review(user_id: str, topic_name: str) -> dict | None:
+    conn = get_connection()
+    rows = _query_all(
+        conn,
+        "MATCH (u:User {id: $uid})-[:HAS_REVIEW]->(r:TopicReview {topic_name: $topic}) "
+        "RETURN r.id, r.topic_name, r.ease_factor, r.interval_days, r.repetitions, "
+        "r.next_review_date, r.last_review_date",
+        {"uid": user_id, "topic": topic_name.lower()},
+    )
+    if not rows:
+        return None
+    r = rows[0]
+    return {
+        "id": r[0], "topic_name": r[1], "ease_factor": r[2],
+        "interval_days": r[3], "repetitions": r[4],
+        "next_review_date": r[5], "last_review_date": r[6],
+    }
+
+
+def upsert_topic_review(user_id: str, topic_name: str, quality: int) -> dict:
+    """Create or update SM-2 schedule for a topic after a study session."""
+    from ml.sm2 import sm2_next, next_review_date as _next_date
+    from datetime import date
+
+    topic_key = topic_name.lower().strip()
+    existing = get_topic_review(user_id, topic_key)
+    today = date.today().isoformat()
+    conn = get_connection()
+
+    if existing:
+        ef, interval, reps = sm2_next(
+            existing["ease_factor"], existing["interval_days"],
+            existing["repetitions"], quality,
+        )
+        nrd = _next_date(interval)
+        conn.execute(
+            "MATCH (r:TopicReview {id: $id}) SET r.ease_factor = $ef, "
+            "r.interval_days = $iv, r.repetitions = $reps, "
+            "r.next_review_date = $nrd, r.last_review_date = $today",
+            {"id": existing["id"], "ef": ef, "iv": interval, "reps": reps,
+             "nrd": nrd, "today": today},
+        )
+        return {**existing, "ease_factor": ef, "interval_days": interval,
+                "repetitions": reps, "next_review_date": nrd, "last_review_date": today}
+    else:
+        ef, interval, reps = sm2_next(2.5, 0, 0, quality)
+        nrd = _next_date(interval)
+        rid = str(uuid.uuid4())
+        conn.execute(
+            "CREATE (:TopicReview {id: $id, topic_name: $topic, ease_factor: $ef, "
+            "interval_days: $iv, repetitions: $reps, next_review_date: $nrd, last_review_date: $today})",
+            {"id": rid, "topic": topic_key, "ef": ef, "iv": interval, "reps": reps,
+             "nrd": nrd, "today": today},
+        )
+        conn.execute(
+            "MATCH (u:User {id: $uid}), (r:TopicReview {id: $rid}) CREATE (u)-[:HAS_REVIEW]->(r)",
+            {"uid": user_id, "rid": rid},
+        )
+        return {"id": rid, "topic_name": topic_key, "ease_factor": ef,
+                "interval_days": interval, "repetitions": reps,
+                "next_review_date": nrd, "last_review_date": today}
+
+
+def get_due_reviews(user_id: str) -> list[dict]:
+    """Return topics due for review today or overdue."""
+    from datetime import date
+    from ml.sm2 import days_until_review
+
+    conn = get_connection()
+    today = date.today().isoformat()
+    rows = _query_all(
+        conn,
+        "MATCH (u:User {id: $uid})-[:HAS_REVIEW]->(r:TopicReview) "
+        "WHERE r.next_review_date <= $today "
+        "RETURN r.topic_name, r.next_review_date, r.interval_days, r.repetitions "
+        "ORDER BY r.next_review_date ASC",
+        {"uid": user_id, "today": today},
+    )
+    return [
+        {
+            "topic_name": r[0],
+            "next_review_date": r[1],
+            "interval_days": r[2],
+            "repetitions": r[3],
+            "days_overdue": -days_until_review(r[1]),
+        }
+        for r in rows
+    ]
+
+
+def get_all_topic_reviews(user_id: str) -> list[dict]:
+    """All topics with their SM-2 schedule."""
+    conn = get_connection()
+    rows = _query_all(
+        conn,
+        "MATCH (u:User {id: $uid})-[:HAS_REVIEW]->(r:TopicReview) "
+        "RETURN r.topic_name, r.ease_factor, r.interval_days, r.repetitions, "
+        "r.next_review_date, r.last_review_date "
+        "ORDER BY r.next_review_date ASC",
+        {"uid": user_id},
+    )
+    from ml.sm2 import days_until_review
+    return [
+        {
+            "topic_name": r[0], "ease_factor": r[1], "interval_days": r[2],
+            "repetitions": r[3], "next_review_date": r[4], "last_review_date": r[5],
+            "days_until": days_until_review(r[4]),
+        }
+        for r in rows
+    ]
+
+
 def get_recent_food_entries(user_id: str, limit: int = 10) -> list[dict]:
     conn = get_connection()
     rows = _query_all(

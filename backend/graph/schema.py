@@ -177,8 +177,22 @@ def init_schema() -> None:
         )
     """)
 
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS TopicReview (
+            id STRING,
+            topic_name STRING,
+            ease_factor DOUBLE,
+            interval_days INT64,
+            repetitions INT64,
+            next_review_date STRING,
+            last_review_date STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
     # Edge tables
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_GOAL (FROM User TO Goal)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_REVIEW (FROM User TO TopicReview)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_SKILL (FROM User TO Skill)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_HABIT (FROM User TO Habit)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS COMPLETED (FROM User TO LearningSession)")

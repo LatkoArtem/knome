@@ -4,7 +4,9 @@ from graph.queries import (
     add_learning_session,
     get_learning_goals,
     get_learning_sessions,
+    upsert_topic_review,
 )
+from ml.sm2 import infer_quality
 from llm.client import llm_respond
 from llm.prompts import LEARNING_SYSTEM
 from llm.context import format_context
@@ -48,9 +50,18 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
     if minutes and any(w in text for w in _SESSION_KW):
         topic = _extract_topic(text)
         add_learning_session(user_id, minutes, topic)
+
+        # SM-2: update review schedule if topic is known
+        review_info = ""
+        if topic:
+            quality = infer_quality(user_message, minutes)
+            review = upsert_topic_review(user_id, topic, quality)
+            days = review["interval_days"]
+            review_info = f" Next review of «{topic}» in {days} day(s)."
+
         fallback = f"Записав: {minutes} хв навчання. Так тримати!"
         topic_str = f" on «{topic}»" if topic else ""
-        action = f"Logged learning session: {minutes} minutes{topic_str}. Saved."
+        action = f"Logged learning session: {minutes} minutes{topic_str}. Saved.{review_info}"
         response = await llm_respond(LEARNING_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 

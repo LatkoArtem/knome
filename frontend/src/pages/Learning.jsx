@@ -4,6 +4,32 @@ import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
 
+function DueReviewCard({ review, onDone }) {
+  const isOverdue = review.days_overdue > 0
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+      <span className="text-lg">🔔</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{review.topic_name}</p>
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          {isOverdue ? `запізнення ${review.days_overdue} дн.` : 'сьогодні'}
+          {' · '}{review.repetitions} повт.
+        </p>
+      </div>
+      <div className="flex gap-1.5 shrink-0">
+        <button onClick={() => onDone(review.topic_name, 2)}
+          className="text-xs px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
+          Важко
+        </button>
+        <button onClick={() => onDone(review.topic_name, 4)}
+          className="text-xs px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400">
+          Знаю
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Learning() {
   const { t } = useTranslation()
   const userId = useStore((s) => s.userId)
@@ -53,6 +79,17 @@ export default function Learning() {
     setGoalDesc('')
     load()
   }
+
+  const markReviewed = async (topicName, quality) => {
+    await fetch(`${API}/learning/review/${userId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic_name: topicName, quality }),
+    })
+    load()
+  }
+
+  const dueReviews = data?.due_reviews ?? []
 
   return (
     <div className="flex flex-col min-h-screen pb-16">
@@ -113,6 +150,22 @@ export default function Learning() {
           </div>
         )}
 
+        {/* Due reviews */}
+        {dueReviews.length > 0 && (
+          <section>
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              {t('learning.due_title')} · {dueReviews.length}
+            </h2>
+            <ul className="space-y-2">
+              {dueReviews.map((r, i) => (
+                <li key={i}>
+                  <DueReviewCard review={r} onDone={markReviewed} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* Goals */}
         <section>
           <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
@@ -152,7 +205,7 @@ export default function Learning() {
           )}
           {data && (
             <p className="text-xs text-gray-400 mt-2">
-              Всього за тиждень: {data.total_minutes} хв ({data.sessions_this_week} сесій)
+              {t('learning.week_total', { minutes: data.total_minutes, sessions: data.sessions_this_week })}
             </p>
           )}
         </section>
