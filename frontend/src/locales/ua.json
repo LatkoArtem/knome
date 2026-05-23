@@ -14,6 +14,7 @@
     "subscriptions": "Підписки",
     "networth": "Капітал",
     "home": "Дім",
+    "trips": "Подорожі",
     "settings": "Налаштування"
   },
 
@@ -506,6 +507,35 @@
     "day_friday": "П'ятниця",
     "day_saturday": "Субота",
     "day_sunday": "Неділя"
+  },
+
+  "trips": {
+    "title": "Подорожі",
+    "subtitle": "Плануй і відстежуй свої мандрівки",
+    "btn_add": "+ Подорож",
+    "btn_cancel": "Скасувати",
+    "btn_save": "Додати подорож",
+    "btn_saving": "Зберігаю...",
+    "btn_advance": "Наступний статус",
+    "form_title": "Нова подорож",
+    "dest_placeholder": "Париж, Одеса, Барселона...",
+    "date_start": "Виїзд",
+    "date_end": "Повернення",
+    "budget": "Бюджет",
+    "currency": "Валюта",
+    "notes_placeholder": "Плани, готелі, що подивитись...",
+    "stat_total": "Подорожей",
+    "stat_upcoming": "Заплановано",
+    "stat_done": "Завершено",
+    "filter_all": "Всі",
+    "filter_planned": "Заплановані",
+    "filter_ongoing": "В дорозі",
+    "filter_done": "Завершені",
+    "status_planned": "Заплановано",
+    "status_ongoing": "В дорозі",
+    "status_done": "Завершено",
+    "empty_title": "Подорожей ще немає",
+    "empty_sub": "Сплануй свою першу пригоду"
   },
 
   "onboarding": {

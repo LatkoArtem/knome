@@ -1247,3 +1247,49 @@ def get_meal_plan(user_id: str, week_start: str) -> dict | None:
     return {"id": r[0], "week_start": week_start,
             "monday": r[1], "tuesday": r[2], "wednesday": r[3], "thursday": r[4],
             "friday": r[5], "saturday": r[6], "sunday": r[7], "prep_notes": r[8]}
+
+
+# --- Trips ---
+
+def add_trip(
+    user_id: str, destination: str, date_start: str = "", date_end: str = "",
+    budget: float = 0.0, currency: str = "UAH", notes: str = "",
+) -> str:
+    conn = get_connection()
+    tid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Trip {id: $id, destination: $dest, date_start: $ds, date_end: $de, "
+        "status: 'planned', budget: $budget, currency: $cur, notes: $notes, created_at: $ts})",
+        {"id": tid, "dest": destination, "ds": date_start, "de": date_end,
+         "budget": budget, "cur": currency, "notes": notes, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (t:Trip {id: $tid}) CREATE (u)-[:HAS_TRIP]->(t)",
+        {"uid": user_id, "tid": tid},
+    )
+    return tid
+
+
+def get_trips(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_TRIP]->(t:Trip) "
+        "RETURN t.id, t.destination, t.date_start, t.date_end, t.status, "
+        "t.budget, t.currency, t.notes, t.created_at "
+        "ORDER BY t.date_start DESC",
+        {"uid": user_id})
+    return [
+        {"id": r[0], "destination": r[1], "date_start": r[2], "date_end": r[3],
+         "status": r[4], "budget": r[5], "currency": r[6], "notes": r[7], "created_at": r[8]}
+        for r in rows
+    ]
+
+
+def update_trip_status(trip_id: str, status: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (t:Trip {id: $id}) SET t.status = $status", {"id": trip_id, "status": status})
+
+
+def delete_trip(trip_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (t:Trip {id: $id}) DETACH DELETE t", {"id": trip_id})

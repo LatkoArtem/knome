@@ -14,6 +14,7 @@
     "subscriptions": "Subscriptions",
     "networth": "Net Worth",
     "home": "Home",
+    "trips": "Trips",
     "settings": "Settings"
   },
 
@@ -506,6 +507,35 @@
     "day_friday": "Friday",
     "day_saturday": "Saturday",
     "day_sunday": "Sunday"
+  },
+
+  "trips": {
+    "title": "Trips",
+    "subtitle": "Plan and track your travels",
+    "btn_add": "+ Trip",
+    "btn_cancel": "Cancel",
+    "btn_save": "Add trip",
+    "btn_saving": "Saving...",
+    "btn_advance": "Next status",
+    "form_title": "New trip",
+    "dest_placeholder": "Paris, Kyiv, Barcelona...",
+    "date_start": "Departure",
+    "date_end": "Return",
+    "budget": "Budget",
+    "currency": "Currency",
+    "notes_placeholder": "Plans, hotels, things to do...",
+    "stat_total": "Trips",
+    "stat_upcoming": "Upcoming",
+    "stat_done": "Completed",
+    "filter_all": "All",
+    "filter_planned": "Planned",
+    "filter_ongoing": "Ongoing",
+    "filter_done": "Done",
+    "status_planned": "Planned",
+    "status_ongoing": "Ongoing",
+    "status_done": "Done",
+    "empty_title": "No trips yet",
+    "empty_sub": "Plan your first adventure"
   },
 
   "onboarding": {

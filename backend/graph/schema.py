@@ -528,3 +528,20 @@ def init_schema() -> None:
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_HOME_TASK (FROM User TO HomeTask)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_SHOPPING_ITEM (FROM User TO ShoppingItem)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_MEAL_PLAN (FROM User TO MealPlan)")
+
+    # --- Trips ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Trip (
+            id STRING,
+            destination STRING,
+            date_start STRING,
+            date_end STRING,
+            status STRING,
+            budget DOUBLE,
+            currency STRING,
+            notes STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_TRIP (FROM User TO Trip)")

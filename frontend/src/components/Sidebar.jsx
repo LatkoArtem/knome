@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   MessageCircle, LayoutDashboard, BookOpen, Wallet, Heart,
   Dumbbell, CheckSquare, NotebookPen, Users, Briefcase,
-  Target, CreditCard, Scale, Home, Settings, LogOut, Zap
+  Target, CreditCard, Scale, Home, Plane, Settings, LogOut, Zap
 } from 'lucide-react'
 import { useStore } from '../store'
 
@@ -29,6 +29,7 @@ export default function Sidebar() {
     { to: '/subscriptions', label: t('nav.subscriptions'), Icon: CreditCard  },
     { to: '/net-worth',     label: t('nav.networth'),      Icon: Scale       },
     { to: '/home',          label: t('nav.home'),          Icon: Home        },
+    { to: '/trips',         label: t('nav.trips'),         Icon: Plane       },
   ]
 
   const initials    = (userName || userEmail || 'U')[0].toUpperCase()
