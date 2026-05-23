@@ -479,3 +479,52 @@ def init_schema() -> None:
     # Net Worth edges
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_ASSET (FROM User TO Asset)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_DEBT (FROM User TO Debt)")
+
+    # --- Home domain nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS HomeTask (
+            id STRING,
+            name STRING,
+            category STRING,
+            frequency STRING,
+            last_done STRING,
+            next_due STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS ShoppingItem (
+            id STRING,
+            name STRING,
+            category STRING,
+            quantity STRING,
+            regular BOOLEAN,
+            is_bought BOOLEAN,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS MealPlan (
+            id STRING,
+            week_start STRING,
+            monday STRING,
+            tuesday STRING,
+            wednesday STRING,
+            thursday STRING,
+            friday STRING,
+            saturday STRING,
+            sunday STRING,
+            prep_notes STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # Home domain edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_HOME_TASK (FROM User TO HomeTask)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_SHOPPING_ITEM (FROM User TO ShoppingItem)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_MEAL_PLAN (FROM User TO MealPlan)")

@@ -31,6 +31,7 @@ from api.career import router as career_router
 from api.subscriptions import router as subscriptions_router
 from api.goals import router as goals_router
 from api.networth import router as networth_router
+from api.home import router as home_router
 from triggers import engine as trigger_engine
 
 logging.basicConfig(
@@ -91,3 +92,4 @@ app.include_router(career_router)
 app.include_router(subscriptions_router)
 app.include_router(goals_router)
 app.include_router(networth_router)
+app.include_router(home_router)

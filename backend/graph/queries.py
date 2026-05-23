@@ -1083,3 +1083,167 @@ def mark_debt_paid(debt_id: str) -> None:
 def delete_debt(debt_id: str) -> None:
     conn = get_connection()
     conn.execute("MATCH (d:Debt {id: $id}) DETACH DELETE d", {"id": debt_id})
+
+
+# --- Home ---
+
+_FREQ_DAYS = {
+    "daily": 1, "weekly": 7, "biweekly": 14,
+    "monthly": 30, "quarterly": 90, "yearly": 365,
+}
+
+
+def _next_due(frequency: str) -> str:
+    from datetime import date, timedelta
+    days = _FREQ_DAYS.get(frequency, 30)
+    return (date.today() + timedelta(days=days)).isoformat()
+
+
+def add_home_task(
+    user_id: str, name: str, category: str = "other", frequency: str = "monthly"
+) -> str:
+    conn = get_connection()
+    from datetime import date
+    tid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:HomeTask {id: $id, name: $name, category: $cat, frequency: $freq, "
+        "last_done: $ld, next_due: $nd, created_at: $ts})",
+        {"id": tid, "name": name, "cat": category, "freq": frequency,
+         "ld": "", "nd": _next_due(frequency), "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (t:HomeTask {id: $tid}) CREATE (u)-[:HAS_HOME_TASK]->(t)",
+        {"uid": user_id, "tid": tid},
+    )
+    return tid
+
+
+def get_home_tasks(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_HOME_TASK]->(t:HomeTask) "
+        "RETURN t.id, t.name, t.category, t.frequency, t.last_done, t.next_due, t.created_at "
+        "ORDER BY t.next_due ASC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "category": r[2], "frequency": r[3],
+             "last_done": r[4], "next_due": r[5], "created_at": r[6]} for r in rows]
+
+
+def mark_home_task_done(task_id: str, frequency: str) -> None:
+    conn = get_connection()
+    from datetime import date
+    conn.execute(
+        "MATCH (t:HomeTask {id: $id}) SET t.last_done = $ld, t.next_due = $nd",
+        {"id": task_id, "ld": date.today().isoformat(), "nd": _next_due(frequency)},
+    )
+
+
+def delete_home_task(task_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (t:HomeTask {id: $id}) DETACH DELETE t", {"id": task_id})
+
+
+def add_shopping_item(
+    user_id: str, name: str, category: str = "other", quantity: str = "1", regular: bool = False
+) -> str:
+    conn = get_connection()
+    iid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:ShoppingItem {id: $id, name: $name, category: $cat, quantity: $qty, "
+        "regular: $reg, is_bought: false, created_at: $ts})",
+        {"id": iid, "name": name, "cat": category, "qty": quantity, "reg": regular, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (i:ShoppingItem {id: $iid}) CREATE (u)-[:HAS_SHOPPING_ITEM]->(i)",
+        {"uid": user_id, "iid": iid},
+    )
+    return iid
+
+
+def get_shopping_items(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_SHOPPING_ITEM]->(i:ShoppingItem) "
+        "RETURN i.id, i.name, i.category, i.quantity, i.regular, i.is_bought, i.created_at "
+        "ORDER BY i.is_bought ASC, i.name ASC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "category": r[2], "quantity": r[3],
+             "regular": r[4], "is_bought": r[5], "created_at": r[6]} for r in rows]
+
+
+def mark_shopping_item_bought(item_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (i:ShoppingItem {id: $id}) SET i.is_bought = true", {"id": item_id})
+
+
+def unmark_shopping_item(item_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (i:ShoppingItem {id: $id}) SET i.is_bought = false", {"id": item_id})
+
+
+def delete_shopping_item(item_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (i:ShoppingItem {id: $id}) DETACH DELETE i", {"id": item_id})
+
+
+def clear_bought_items(user_id: str) -> None:
+    conn = get_connection()
+    conn.execute(
+        "MATCH (u:User {id: $uid})-[:HAS_SHOPPING_ITEM]->(i:ShoppingItem {is_bought: true, regular: false}) "
+        "DETACH DELETE i",
+        {"uid": user_id},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid})-[:HAS_SHOPPING_ITEM]->(i:ShoppingItem {is_bought: true, regular: true}) "
+        "SET i.is_bought = false",
+        {"uid": user_id},
+    )
+
+
+def save_meal_plan(
+    user_id: str, week_start: str,
+    monday: str = "", tuesday: str = "", wednesday: str = "",
+    thursday: str = "", friday: str = "", saturday: str = "", sunday: str = "",
+    prep_notes: str = "",
+) -> str:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_MEAL_PLAN]->(m:MealPlan {week_start: $ws}) RETURN m.id",
+        {"uid": user_id, "ws": week_start})
+    if rows:
+        mid = rows[0][0]
+        conn.execute(
+            "MATCH (m:MealPlan {id: $id}) SET m.monday=$mon, m.tuesday=$tue, m.wednesday=$wed, "
+            "m.thursday=$thu, m.friday=$fri, m.saturday=$sat, m.sunday=$sun, m.prep_notes=$pn",
+            {"id": mid, "mon": monday, "tue": tuesday, "wed": wednesday,
+             "thu": thursday, "fri": friday, "sat": saturday, "sun": sunday, "pn": prep_notes},
+        )
+        return mid
+    mid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:MealPlan {id: $id, week_start: $ws, monday: $mon, tuesday: $tue, "
+        "wednesday: $wed, thursday: $thu, friday: $fri, saturday: $sat, sunday: $sun, "
+        "prep_notes: $pn, created_at: $ts})",
+        {"id": mid, "ws": week_start, "mon": monday, "tue": tuesday, "wed": wednesday,
+         "thu": thursday, "fri": friday, "sat": saturday, "sun": sunday,
+         "pn": prep_notes, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (m:MealPlan {id: $mid}) CREATE (u)-[:HAS_MEAL_PLAN]->(m)",
+        {"uid": user_id, "mid": mid},
+    )
+    return mid
+
+
+def get_meal_plan(user_id: str, week_start: str) -> dict | None:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_MEAL_PLAN]->(m:MealPlan {week_start: $ws}) "
+        "RETURN m.id, m.monday, m.tuesday, m.wednesday, m.thursday, m.friday, m.saturday, m.sunday, m.prep_notes",
+        {"uid": user_id, "ws": week_start})
+    if not rows:
+        return None
+    r = rows[0]
+    return {"id": r[0], "week_start": week_start,
+            "monday": r[1], "tuesday": r[2], "wednesday": r[3], "thursday": r[4],
+            "friday": r[5], "saturday": r[6], "sunday": r[7], "prep_notes": r[8]}

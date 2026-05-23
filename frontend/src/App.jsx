@@ -20,6 +20,7 @@ import Career from './pages/Career'
 import Goals from './pages/Goals'
 import Subscriptions from './pages/Subscriptions'
 import NetWorth from './pages/NetWorth'
+import Home from './pages/Home'
 import Settings from './pages/Settings'
 
 function PrivateRoute({ children }) {
@@ -93,6 +94,7 @@ export default function App() {
               <Route path="/goals"          element={<PrivateRoute><Goals /></PrivateRoute>} />
               <Route path="/subscriptions"  element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
               <Route path="/net-worth"      element={<PrivateRoute><NetWorth /></PrivateRoute>} />
+              <Route path="/home"           element={<PrivateRoute><Home /></PrivateRoute>} />
               <Route path="/settings"       element={<PrivateRoute><Settings /></PrivateRoute>} />
               <Route path="/"           element={<Navigate to="/chat" replace />} />
             </Routes>
