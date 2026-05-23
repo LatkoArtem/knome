@@ -996,3 +996,90 @@ def complete_bucket_item(item_id: str) -> None:
         "MATCH (b:BucketItem {id: $id}) SET b.status = $status, b.completed_date = $cd",
         {"id": item_id, "status": "done", "cd": date.today().isoformat()},
     )
+
+
+# --- Net Worth ---
+
+def add_asset(
+    user_id: str, name: str, category: str = "other", value: float = 0.0,
+    currency: str = "UAH", notes: str = "",
+) -> str:
+    conn = get_connection()
+    aid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Asset {id: $id, name: $name, category: $cat, value: $val, "
+        "currency: $cur, notes: $notes, updated_at: $ts})",
+        {"id": aid, "name": name, "cat": category, "val": value,
+         "cur": currency, "notes": notes, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (a:Asset {id: $aid}) CREATE (u)-[:HAS_ASSET]->(a)",
+        {"uid": user_id, "aid": aid},
+    )
+    return aid
+
+
+def get_assets(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_ASSET]->(a:Asset) "
+        "RETURN a.id, a.name, a.category, a.value, a.currency, a.notes, a.updated_at "
+        "ORDER BY a.value DESC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "category": r[2], "value": r[3],
+             "currency": r[4], "notes": r[5], "updated_at": r[6]} for r in rows]
+
+
+def update_asset_value(asset_id: str, value: float) -> None:
+    conn = get_connection()
+    conn.execute(
+        "MATCH (a:Asset {id: $id}) SET a.value = $val, a.updated_at = $ts",
+        {"id": asset_id, "val": value, "ts": _now()},
+    )
+
+
+def delete_asset(asset_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (a:Asset {id: $id}) DETACH DELETE a", {"id": asset_id})
+
+
+def add_debt(
+    user_id: str, name: str, category: str = "loan", amount: float = 0.0,
+    currency: str = "UAH", interest_rate: float = 0.0, due_date: str = "",
+) -> str:
+    conn = get_connection()
+    did = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Debt {id: $id, name: $name, category: $cat, amount: $amt, "
+        "currency: $cur, interest_rate: $ir, due_date: $dd, is_paid: false, created_at: $ts})",
+        {"id": did, "name": name, "cat": category, "amt": amount,
+         "cur": currency, "ir": interest_rate, "dd": due_date, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (d:Debt {id: $did}) CREATE (u)-[:HAS_DEBT]->(d)",
+        {"uid": user_id, "did": did},
+    )
+    return did
+
+
+def get_debts(user_id: str, active_only: bool = True) -> list[dict]:
+    conn = get_connection()
+    where = "WHERE d.is_paid = false" if active_only else ""
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:HAS_DEBT]->(d:Debt) {where} "
+        f"RETURN d.id, d.name, d.category, d.amount, d.currency, d.interest_rate, d.due_date, d.is_paid, d.created_at "
+        f"ORDER BY d.amount DESC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "category": r[2], "amount": r[3],
+             "currency": r[4], "interest_rate": r[5], "due_date": r[6],
+             "is_paid": r[7], "created_at": r[8]} for r in rows]
+
+
+def mark_debt_paid(debt_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (d:Debt {id: $id}) SET d.is_paid = true", {"id": debt_id})
+
+
+def delete_debt(debt_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (d:Debt {id: $id}) DETACH DELETE d", {"id": debt_id})

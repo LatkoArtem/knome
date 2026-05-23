@@ -446,3 +446,36 @@ def init_schema() -> None:
     # Goals edges
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_LIFE_GOAL (FROM User TO LifeGoal)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_BUCKET_ITEM (FROM User TO BucketItem)")
+
+    # --- Net Worth nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Asset (
+            id STRING,
+            name STRING,
+            category STRING,
+            value DOUBLE,
+            currency STRING,
+            notes STRING,
+            updated_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Debt (
+            id STRING,
+            name STRING,
+            category STRING,
+            amount DOUBLE,
+            currency STRING,
+            interest_rate DOUBLE,
+            due_date STRING,
+            is_paid BOOLEAN,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # Net Worth edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_ASSET (FROM User TO Asset)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_DEBT (FROM User TO Debt)")
