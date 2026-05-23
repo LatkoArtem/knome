@@ -4,6 +4,8 @@ from langgraph.graph import StateGraph, START, END
 import agents.learning as learning_agent
 import agents.financial as financial_agent
 import agents.health as health_agent
+import agents.workout as workout_agent
+import agents.productivity as productivity_agent
 from graph.queries import commit_updates, get_user_context
 from llm.client import llm_respond
 from llm.prompts import GENERAL_SYSTEM
@@ -31,6 +33,17 @@ _HEALTH_KW = [
     "спав", "спала", "сон", "настрій", "їжа", "з'їв", "здоров",
     "самопочуття", "check-in", "чекін", "sleep", "mood", "food", "health", "ate",
 ]
+_WORKOUT_KW = [
+    "тренув", "потренувавс", "потренувалас", "вправ", "підхід",
+    "жим", "присід", "підтяг", "станова", "гантел", "штанг",
+    "gym", "workout", "exercise", "bench", "squat", "deadlift", "фітнес",
+    "програм трен", "план трен",
+]
+_PRODUCTIVITY_KW = [
+    "задач", "завдан", "проект", "дедлайн", "pomodoro", "помодоро",
+    "таймер фокус", "task", "todo", "список задач", "план на день",
+    "треба зробити", "починаю фокус",
+]
 
 
 def _classify_domain(text: str) -> str:
@@ -39,6 +52,8 @@ def _classify_domain(text: str) -> str:
         "learning": sum(1 for w in _LEARNING_KW if w in text_lower),
         "finance": sum(1 for w in _FINANCE_KW if w in text_lower),
         "health": sum(1 for w in _HEALTH_KW if w in text_lower),
+        "workout": sum(1 for w in _WORKOUT_KW if w in text_lower),
+        "productivity": sum(1 for w in _PRODUCTIVITY_KW if w in text_lower),
     }
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "general"
@@ -71,6 +86,20 @@ async def run_health(state: KnomeState) -> dict:
     return {"response": response, "graph_updates": updates}
 
 
+async def run_workout(state: KnomeState) -> dict:
+    response, updates = await workout_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
+    return {"response": response, "graph_updates": updates}
+
+
+async def run_productivity(state: KnomeState) -> dict:
+    response, updates = await productivity_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
+    return {"response": response, "graph_updates": updates}
+
+
 async def run_general(state: KnomeState) -> dict:
     ctx = state.get("graph_context", {})
     user_name = ctx.get("user", {}).get("name", "")
@@ -90,7 +119,9 @@ async def run_general(state: KnomeState) -> dict:
             f"{greeting}я можу допомогти з:\n"
             "Навчання — «позаймався Python 30 хвилин»\n"
             "Фінанси — «витратив 200 грн на каву»\n"
-            "Здоров'я — «спав 7 годин, настрій 8»"
+            "Здоров'я — «спав 7 годин, настрій 8»\n"
+            "Тренування — «потренувався, жим 80кг 4×5»\n"
+            "Задачі — «задача: зробити X»"
         )
     return {"response": response, "graph_updates": []}
 
@@ -111,6 +142,8 @@ def create_orchestrator():
     graph.add_node("run_learning", run_learning)
     graph.add_node("run_finance", run_finance)
     graph.add_node("run_health", run_health)
+    graph.add_node("run_workout", run_workout)
+    graph.add_node("run_productivity", run_productivity)
     graph.add_node("run_general", run_general)
     graph.add_node("apply_updates", apply_updates)
 
@@ -122,12 +155,16 @@ def create_orchestrator():
             "learning": "run_learning",
             "finance": "run_finance",
             "health": "run_health",
+            "workout": "run_workout",
+            "productivity": "run_productivity",
             "general": "run_general",
         },
     )
     graph.add_edge("run_learning", "apply_updates")
     graph.add_edge("run_finance", "apply_updates")
     graph.add_edge("run_health", "apply_updates")
+    graph.add_edge("run_workout", "apply_updates")
+    graph.add_edge("run_productivity", "apply_updates")
     graph.add_edge("run_general", "apply_updates")
     graph.add_edge("apply_updates", END)
 

@@ -106,6 +106,8 @@ def get_user_context(user_id: str) -> dict:
         nutrition_ctx["entries_today"] = len(food_entries)
         nutrition_ctx["total_calories"] = round(total_kcal, 1)
 
+    workout_ctx = get_workout_context(user_id)
+    productivity_ctx = get_productivity_context(user_id)
     patterns = _detect_patterns(health_ctx, learning_ctx, finance_ctx)
 
     return {
@@ -115,6 +117,8 @@ def get_user_context(user_id: str) -> dict:
         "nutrition": nutrition_ctx,
         "learning": learning_ctx,
         "finance": finance_ctx,
+        "workout": workout_ctx,
+        "productivity": productivity_ctx,
         "patterns": patterns,
     }
 
@@ -445,6 +449,35 @@ def delete_budget(user_id: str, category: str) -> None:
         conn.execute("MATCH (b:Budget {id: $id}) DETACH DELETE b", {"id": row[0]})
 
 
+def get_workout_context(user_id: str) -> dict:
+    sessions = get_recent_workout_sessions(user_id, limit=7)
+    programs = get_workout_programs(user_id)
+    active = next((p for p in programs if p.get("is_active")), None)
+    ctx: dict = {}
+    if sessions:
+        ctx["session_count"] = len(sessions)
+        ctx["last_session_date"] = sessions[0]["date"]
+        ctx["total_duration"] = sum(s["duration"] for s in sessions)
+    if active:
+        ctx["active_program"] = active["name"]
+        ctx["program_goal"] = active["goal"]
+    return ctx
+
+
+def get_productivity_context(user_id: str) -> dict:
+    tasks = get_tasks(user_id, status="active")
+    pomodoros = get_pomodoros_today(user_id)
+    ctx: dict = {}
+    if tasks:
+        ctx["active_tasks"] = len(tasks)
+        high = [t for t in tasks if t["priority"] >= 4]
+        ctx["high_priority_tasks"] = len(high)
+    if pomodoros:
+        ctx["pomodoros_today"] = len(pomodoros)
+        ctx["focus_minutes_today"] = sum(p["duration"] for p in pomodoros if p["completed"])
+    return ctx
+
+
 def get_recent_food_entries(user_id: str, limit: int = 10) -> list[dict]:
     conn = get_connection()
     rows = _query_all(
@@ -458,3 +491,213 @@ def get_recent_food_entries(user_id: str, limit: int = 10) -> list[dict]:
         {"name": r[0], "calories": r[1], "protein": r[2], "fat": r[3], "carbs": r[4], "date": r[5]}
         for r in rows
     ]
+
+
+# --- Workout ---
+
+def create_workout_program(
+    user_id: str,
+    name: str,
+    goal: str,
+    days_per_week: int,
+    equipment: str,
+    level: str,
+    duration_min: int = 60,
+) -> str:
+    conn = get_connection()
+    # Deactivate existing programs
+    existing = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_PROGRAM]->(p:WorkoutProgram) RETURN p.id",
+        {"uid": user_id})
+    for row in existing:
+        conn.execute("MATCH (p:WorkoutProgram {id: $id}) SET p.is_active = false", {"id": row[0]})
+
+    pid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:WorkoutProgram {id: $id, name: $name, goal: $goal, days_per_week: $days, "
+        "equipment: $eq, level: $level, duration_min: $dur, created_at: $ts, is_active: true})",
+        {"id": pid, "name": name, "goal": goal, "days": days_per_week,
+         "eq": equipment, "level": level, "dur": duration_min, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (p:WorkoutProgram {id: $pid}) CREATE (u)-[:HAS_PROGRAM]->(p)",
+        {"uid": user_id, "pid": pid},
+    )
+    return pid
+
+
+def get_workout_programs(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_PROGRAM]->(p:WorkoutProgram) "
+        "RETURN p.id, p.name, p.goal, p.days_per_week, p.equipment, p.level, p.duration_min, p.is_active, p.created_at "
+        "ORDER BY p.created_at DESC",
+        {"uid": user_id})
+    return [
+        {"id": r[0], "name": r[1], "goal": r[2], "days_per_week": r[3],
+         "equipment": r[4], "level": r[5], "duration_min": r[6], "is_active": r[7], "created_at": r[8]}
+        for r in rows
+    ]
+
+
+def get_active_workout_program(user_id: str) -> Optional[dict]:
+    programs = get_workout_programs(user_id)
+    return next((p for p in programs if p.get("is_active")), None)
+
+
+def add_workout_session(
+    user_id: str,
+    duration: int = 60,
+    notes: str = "",
+    rating: int = 0,
+    program_id: str = "",
+) -> str:
+    conn = get_connection()
+    sid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:WorkoutSession {id: $id, date: $date, program_id: $pid, duration: $dur, notes: $notes, rating: $rating})",
+        {"id": sid, "date": _now(), "pid": program_id, "dur": duration, "notes": notes, "rating": rating},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (s:WorkoutSession {id: $sid}) CREATE (u)-[:DID_SESSION]->(s)",
+        {"uid": user_id, "sid": sid},
+    )
+    return sid
+
+
+def add_exercise_log(
+    session_id: str,
+    exercise_name: str,
+    sets: int = 0,
+    reps: str = "",
+    weight: str = "0",
+    rpe: float = 0.0,
+) -> str:
+    conn = get_connection()
+    eid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:ExerciseLog {id: $id, session_id: $sid, exercise_name: $name, "
+        "sets: $sets, reps: $reps, weight: $weight, rpe: $rpe})",
+        {"id": eid, "sid": session_id, "name": exercise_name,
+         "sets": sets, "reps": reps, "weight": weight, "rpe": rpe},
+    )
+    conn.execute(
+        "MATCH (s:WorkoutSession {id: $sid}), (e:ExerciseLog {id: $eid}) CREATE (s)-[:LOGGED_EXERCISE]->(e)",
+        {"sid": session_id, "eid": eid},
+    )
+    return eid
+
+
+def get_recent_workout_sessions(user_id: str, limit: int = 10) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:DID_SESSION]->(s:WorkoutSession) "
+        f"RETURN s.id, s.date, s.duration, s.notes, s.rating "
+        f"ORDER BY s.date DESC LIMIT {limit}",
+        {"uid": user_id})
+    return [{"id": r[0], "date": r[1], "duration": r[2], "notes": r[3], "rating": r[4]} for r in rows]
+
+
+def get_session_exercises(session_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (s:WorkoutSession {id: $sid})-[:LOGGED_EXERCISE]->(e:ExerciseLog) "
+        "RETURN e.exercise_name, e.sets, e.reps, e.weight, e.rpe",
+        {"sid": session_id})
+    return [{"name": r[0], "sets": r[1], "reps": r[2], "weight": r[3], "rpe": r[4]} for r in rows]
+
+
+# --- Productivity ---
+
+def add_task(
+    user_id: str,
+    title: str,
+    priority: int = 3,
+    due_date: str = "",
+    project: str = "",
+    domain: str = "general",
+) -> str:
+    conn = get_connection()
+    tid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Task {id: $id, title: $title, priority: $priority, status: 'active', "
+        "due_date: $due, project: $project, domain: $domain, created_at: $ts})",
+        {"id": tid, "title": title, "priority": priority, "due": due_date,
+         "project": project, "domain": domain, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (t:Task {id: $tid}) CREATE (u)-[:HAS_TASK]->(t)",
+        {"uid": user_id, "tid": tid},
+    )
+    return tid
+
+
+def get_tasks(user_id: str, status: str = "active") -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_TASK]->(t:Task {status: $status}) "
+        "RETURN t.id, t.title, t.priority, t.status, t.due_date, t.project, t.domain, t.created_at "
+        "ORDER BY t.priority DESC, t.created_at ASC",
+        {"uid": user_id, "status": status})
+    return [
+        {"id": r[0], "title": r[1], "priority": r[2], "status": r[3],
+         "due_date": r[4], "project": r[5], "domain": r[6], "created_at": r[7]}
+        for r in rows
+    ]
+
+
+def update_task_status(task_id: str, status: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (t:Task {id: $id}) SET t.status = $status", {"id": task_id, "status": status})
+
+
+def add_project(user_id: str, name: str, description: str = "", deadline: str = "") -> str:
+    conn = get_connection()
+    pid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Project {id: $id, name: $name, description: $desc, status: 'active', "
+        "deadline: $dl, created_at: $ts})",
+        {"id": pid, "name": name, "desc": description, "dl": deadline, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (p:Project {id: $pid}) CREATE (u)-[:HAS_PROJECT]->(p)",
+        {"uid": user_id, "pid": pid},
+    )
+    return pid
+
+
+def get_projects(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_PROJECT]->(p:Project) "
+        "RETURN p.id, p.name, p.description, p.status, p.deadline, p.created_at "
+        "ORDER BY p.created_at DESC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "description": r[2], "status": r[3], "deadline": r[4], "created_at": r[5]}
+            for r in rows]
+
+
+def add_pomodoro(user_id: str, task_id: str = "", duration: int = 25, completed: bool = True) -> str:
+    conn = get_connection()
+    pid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:PomodoroSession {id: $id, date: $date, task_id: $tid, duration: $dur, completed: $done})",
+        {"id": pid, "date": _now(), "tid": task_id, "dur": duration, "done": completed},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (ps:PomodoroSession {id: $pid}) CREATE (u)-[:DID_POMODORO]->(ps)",
+        {"uid": user_id, "pid": pid},
+    )
+    return pid
+
+
+def get_pomodoros_today(user_id: str) -> list[dict]:
+    from datetime import date
+    today = date.today().isoformat()
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:DID_POMODORO]->(ps:PomodoroSession) "
+        "WHERE ps.date STARTS WITH $today "
+        "RETURN ps.id, ps.task_id, ps.duration, ps.completed, ps.date",
+        {"uid": user_id, "today": today})
+    return [{"id": r[0], "task_id": r[1], "duration": r[2], "completed": r[3], "date": r[4]} for r in rows]

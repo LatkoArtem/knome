@@ -207,3 +207,106 @@ def init_schema() -> None:
     conn.execute("CREATE REL TABLE IF NOT EXISTS CONNECTS_CHECKIN (FROM Pattern TO CheckIn)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS CONNECTS_TRANSACTION (FROM Pattern TO Transaction)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS BASED_ON (FROM Insight TO Pattern)")
+
+    # --- Workout nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS WorkoutProgram (
+            id STRING,
+            name STRING,
+            goal STRING,
+            days_per_week INT64,
+            equipment STRING,
+            level STRING,
+            duration_min INT64,
+            created_at STRING,
+            is_active BOOLEAN,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS WorkoutDay (
+            id STRING,
+            program_id STRING,
+            day_number INT64,
+            name STRING,
+            muscle_groups STRING,
+            exercises STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS WorkoutSession (
+            id STRING,
+            date STRING,
+            program_id STRING,
+            duration INT64,
+            notes STRING,
+            rating INT64,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS ExerciseLog (
+            id STRING,
+            session_id STRING,
+            exercise_name STRING,
+            sets INT64,
+            reps STRING,
+            weight STRING,
+            rpe DOUBLE,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # --- Productivity nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Task (
+            id STRING,
+            title STRING,
+            priority INT64,
+            status STRING,
+            due_date STRING,
+            project STRING,
+            domain STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Project (
+            id STRING,
+            name STRING,
+            description STRING,
+            status STRING,
+            deadline STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS PomodoroSession (
+            id STRING,
+            date STRING,
+            task_id STRING,
+            duration INT64,
+            completed BOOLEAN,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # Workout edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_PROGRAM (FROM User TO WorkoutProgram)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_DAY (FROM WorkoutProgram TO WorkoutDay)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS DID_SESSION (FROM User TO WorkoutSession)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS LOGGED_EXERCISE (FROM WorkoutSession TO ExerciseLog)")
+
+    # Productivity edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_TASK (FROM User TO Task)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_PROJECT (FROM User TO Project)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS TASK_IN_PROJECT (FROM Task TO Project)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS DID_POMODORO (FROM User TO PomodoroSession)")
