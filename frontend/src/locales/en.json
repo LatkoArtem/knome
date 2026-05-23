@@ -83,36 +83,6 @@
     "label_me": "Me"
   },
 
-  "dashboard": {
-    "subtitle": "Your personal AI overview",
-    "learning": "Learning",
-    "finance": "Finance",
-    "health": "Health",
-    "sessions": "sessions",
-    "minutes": "min",
-    "goals": "goals",
-    "transactions": "transactions",
-    "checkin_week": "check-ins this week",
-    "mood": "Mood",
-    "sleep": "Sleep",
-    "no_data": "No data yet",
-    "burnout_title": "Burnout Risk",
-    "burnout_low": "Low",
-    "burnout_medium": "Medium",
-    "burnout_high": "High",
-    "burnout_no_data": "Need check-ins to analyze",
-    "forecast_title": "Spending Forecast (30d)",
-    "forecast_no_data": "Need more transactions",
-    "insights_title": "AI Insights",
-    "insights_loading": "Analyzing your data...",
-    "insights_empty": "Collect more data for first insights",
-    "report_title": "Weekly AI Report",
-    "report_btn": "✨ Generate",
-    "report_btn_update": "↻ Refresh",
-    "report_loading": "Generating...",
-    "report_empty": "AI report will summarize your week — learning, health, finances."
-  },
-
   "finance": {
     "title": "Finance",
     "subtitle": "Expenses and transactions",
@@ -144,7 +114,14 @@
     "summary_title": "Total spending",
     "recent_title": "Recent transactions",
     "no_transactions_title": "No transactions yet",
-    "no_transactions_sub": "Write in chat or tap «+ Add»"
+    "no_transactions_sub": "Write in chat or tap «+ Add»",
+    "monobank_err": "Error",
+    "monobank_err_connection": "Connection error",
+    "monobank_err_sync": "Sync error",
+    "monobank_msg_connected": "Connected: {{name}}",
+    "monobank_msg_synced": "Imported {{count}} new transactions",
+    "monobank_disconnected": "Disconnected",
+    "recent_count": "{{count}} records"
   },
 
   "health": {
@@ -227,7 +204,18 @@
     "goals_empty": "No goals yet — add your first!",
     "sessions_title": "Recent sessions",
     "sessions_default": "Learning session",
-    "sessions_empty": "No sessions yet"
+    "sessions_empty": "No sessions yet",
+    "flash_first": "First review",
+    "flash_stats": "Reviews: {{reps}} · Interval: {{days}} d.",
+    "flash_done_reviewed": "Reviewed {{count}} topics.",
+    "range_min": "5 min",
+    "range_max": "3 h",
+    "sessions_this_week": "{{count}} this week",
+    "goals_empty_title": "No goals yet",
+    "goals_empty_sub": "Tap «+ Goal» to add your first",
+    "sessions_empty_title": "No sessions yet",
+    "sessions_empty_sub": "Tap «+ Session» or write in chat",
+    "btn_saving": "..."
   },
 
   "settings": {

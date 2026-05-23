@@ -83,36 +83,6 @@
     "label_me": "Я"
   },
 
-  "dashboard": {
-    "subtitle": "Твій особистий AI-огляд",
-    "learning": "Навчання",
-    "finance": "Фінанси",
-    "health": "Здоров'я",
-    "sessions": "сесій",
-    "minutes": "хв",
-    "goals": "цілей",
-    "transactions": "транзакцій",
-    "checkin_week": "check-in за тиждень",
-    "mood": "Настрій",
-    "sleep": "Сон",
-    "no_data": "Дані відсутні",
-    "burnout_title": "Ризик вигорання",
-    "burnout_low": "Низький",
-    "burnout_medium": "Середній",
-    "burnout_high": "Високий",
-    "burnout_no_data": "Потрібні check-ini для аналізу",
-    "forecast_title": "Прогноз витрат (30 дн.)",
-    "forecast_no_data": "Потрібно більше транзакцій",
-    "insights_title": "AI Інсайти",
-    "insights_loading": "Аналізую твої дані...",
-    "insights_empty": "Збери більше даних для перших інсайтів",
-    "report_title": "Тижневий AI-звіт",
-    "report_btn": "✨ Згенерувати",
-    "report_btn_update": "↻ Оновити",
-    "report_loading": "Генеруємо...",
-    "report_empty": "AI-звіт підсумує твій тиждень — навчання, здоров'я, фінанси."
-  },
-
   "finance": {
     "title": "Фінанси",
     "subtitle": "Витрати та транзакції",
@@ -144,7 +114,14 @@
     "summary_title": "Загальні витрати",
     "recent_title": "Останні транзакції",
     "no_transactions_title": "Транзакцій ще немає",
-    "no_transactions_sub": "Напиши у чаті або натисни «+ Додати»"
+    "no_transactions_sub": "Напиши у чаті або натисни «+ Додати»",
+    "monobank_err": "Помилка",
+    "monobank_err_connection": "Помилка підключення",
+    "monobank_err_sync": "Помилка синхронізації",
+    "monobank_msg_connected": "Підключено: {{name}}",
+    "monobank_msg_synced": "Імпортовано {{count}} нових транзакцій",
+    "monobank_disconnected": "Відключено",
+    "recent_count": "{{count}} записів"
   },
 
   "health": {
@@ -227,7 +204,18 @@
     "goals_empty": "Цілей ще немає — додай першу!",
     "sessions_title": "Останні сесії",
     "sessions_default": "Сесія навчання",
-    "sessions_empty": "Сесій ще немає"
+    "sessions_empty": "Сесій ще немає",
+    "flash_first": "Перше повторення",
+    "flash_stats": "Повторень: {{reps}} · Інтервал: {{days}} дн.",
+    "flash_done_reviewed": "Переглянуто {{count}} тем.",
+    "range_min": "5 хв",
+    "range_max": "3 год",
+    "sessions_this_week": "{{count}} цього тижня",
+    "goals_empty_title": "Цілей ще немає",
+    "goals_empty_sub": "Натисни «+ Ціль» щоб додати першу",
+    "sessions_empty_title": "Сесій ще немає",
+    "sessions_empty_sub": "Натисни «+ Сесія» або напиши у чаті",
+    "btn_saving": "..."
   },
 
   "settings": {

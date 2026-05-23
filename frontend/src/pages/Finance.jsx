@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Plus, Wallet, Target, Trash2 } from 'lucide-react'
+import { Plus, Target, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import { IllustrationFinance } from '../components/Illustrations'
 
@@ -35,6 +36,7 @@ const CAT_COLOR = {
 }
 
 function MonobankCard({ userId, onSynced }) {
+  const { t } = useTranslation()
   const [status, setStatus] = useState(null)
   const [showInput, setShowInput] = useState(false)
   const [token, setToken] = useState('')
@@ -56,11 +58,11 @@ function MonobankCard({ userId, onSynced }) {
         body: JSON.stringify({ token: token.trim() }),
       })
       const d = await res.json()
-      if (!res.ok) { setMsg({ err: true, text: d.detail || 'Помилка' }); return }
-      setMsg({ err: false, text: `Підключено: ${d.name}` })
+      if (!res.ok) { setMsg({ err: true, text: d.detail || t('finance.monobank_err') }); return }
+      setMsg({ err: false, text: t('finance.monobank_msg_connected', { name: d.name }) })
       setShowInput(false); setToken('')
       setStatus({ connected: true })
-    } catch { setMsg({ err: true, text: 'Помилка підключення' }) }
+    } catch { setMsg({ err: true, text: t('finance.monobank_err_connection') }) }
     finally { setSaving(false) }
   }
 
@@ -70,16 +72,16 @@ function MonobankCard({ userId, onSynced }) {
     try {
       const res = await fetch(`${API}/monobank/sync/${userId}`, { method: 'POST' })
       const d = await res.json()
-      if (!res.ok) { setMsg({ err: true, text: d.detail || 'Помилка синхронізації' }); return }
-      setMsg({ err: false, text: `Імпортовано ${d.imported} нових транзакцій` })
+      if (!res.ok) { setMsg({ err: true, text: d.detail || t('finance.monobank_err_sync') }); return }
+      setMsg({ err: false, text: t('finance.monobank_msg_synced', { count: d.imported }) })
       onSynced()
-    } catch { setMsg({ err: true, text: 'Помилка синхронізації' }) }
+    } catch { setMsg({ err: true, text: t('finance.monobank_err_sync') }) }
     finally { setSyncing(false) }
   }
 
   const disconnect = async () => {
     await fetch(`${API}/monobank/disconnect/${userId}`, { method: 'DELETE' })
-    setStatus({ connected: false }); setMsg({ err: false, text: 'Відключено' })
+    setStatus({ connected: false }); setMsg({ err: false, text: t('finance.monobank_disconnected') })
   }
 
   return (
@@ -87,9 +89,13 @@ function MonobankCard({ userId, onSynced }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-base">🏦</span>
-          <span className="text-sm font-medium text-zinc-200">Monobank</span>
+          <span className="text-sm font-medium text-zinc-200">{t('finance.monobank_title')}</span>
         </div>
-        {status?.connected && <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Підключено</span>}
+        {status?.connected && (
+          <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            {t('finance.monobank_connected')}
+          </span>
+        )}
       </div>
 
       {msg && (
@@ -101,36 +107,33 @@ function MonobankCard({ userId, onSynced }) {
       {!status?.connected ? (
         showInput ? (
           <div className="space-y-2">
-            <p className="text-xs text-zinc-500">Monobank → Налаштування → Інше → API → скопіюй токен</p>
-            <input value={token} onChange={e => setToken(e.target.value)} placeholder="Твій токен..." className="input font-mono text-xs" />
+            <p className="text-xs text-zinc-500">{t('finance.monobank_token_hint')}</p>
+            <input value={token} onChange={e => setToken(e.target.value)}
+              placeholder={t('finance.monobank_token_placeholder')} className="input font-mono text-xs" />
             <div className="flex gap-2">
               <button onClick={saveToken} disabled={saving || !token.trim()} className="btn-primary flex-1 text-xs py-2">
-                {saving ? 'Перевірка...' : 'Підключити'}
+                {saving ? t('finance.monobank_btn_connecting') : t('finance.monobank_btn_connect')}
               </button>
-              <button onClick={() => { setShowInput(false); setToken('') }} className="btn-outline flex-1 text-xs py-2">Скасувати</button>
+              <button onClick={() => { setShowInput(false); setToken('') }} className="btn-outline flex-1 text-xs py-2">
+                {t('finance.btn_cancel')}
+              </button>
             </div>
           </div>
         ) : (
           <button onClick={() => setShowInput(true)} className="w-full border border-dashed border-zinc-700 hover:border-zinc-500 rounded-lg py-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-            + Підключити Monobank
+            {t('finance.monobank_connect_btn')}
           </button>
         )
       ) : (
         <div className="flex gap-2">
           <button onClick={sync} disabled={syncing} className="btn-primary flex-1 text-xs py-2">
-            {syncing ? 'Синхронізація...' : '↻ Синхронізувати (30 дн.)'}
+            {syncing ? t('finance.monobank_btn_syncing') : t('finance.monobank_btn_sync')}
           </button>
           <button onClick={disconnect} className="btn-ghost text-xs px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10">✕</button>
         </div>
       )}
     </div>
   )
-}
-
-const CAT_CHART_COLORS = {
-  'їжа': '#f97316', transport: '#3b82f6', розваги: '#a855f7',
-  навчання: '#6366f1', "здоров'я": '#f43f5e', комунальні: '#71717a',
-  одяг: '#eab308', інше: '#52525b',
 }
 
 function buildDailyChart(transactions = []) {
@@ -149,12 +152,13 @@ function buildDailyChart(transactions = []) {
 }
 
 function SpendingChart({ transactions, currency }) {
+  const { t } = useTranslation()
   const chartData = buildDailyChart(transactions)
   const hasData = chartData.some(d => d.amount > 0)
   if (!hasData) return null
   return (
     <div className="card p-5">
-      <p className="section-label mb-4">Витрати за 14 днів</p>
+      <p className="section-label mb-4">{t('finance.chart_title')}</p>
       <ResponsiveContainer width="100%" height={120}>
         <BarChart data={chartData} barSize={14} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
           <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
@@ -163,7 +167,7 @@ function SpendingChart({ transactions, currency }) {
             contentStyle={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 12 }}
             labelStyle={{ color: '#a1a1aa' }}
             itemStyle={{ color: '#e4e4e7' }}
-            formatter={(v) => [`${v.toFixed(0)} ${currency}`, 'Витрати']}
+            formatter={(v) => [`${v.toFixed(0)} ${currency}`, t('finance.chart_tooltip')]}
           />
           <Bar dataKey="amount" radius={[4, 4, 0, 0]} fill="#3b82f6" opacity={0.9} />
         </BarChart>
@@ -175,6 +179,7 @@ function SpendingChart({ transactions, currency }) {
 const BUDGET_CATS = ['їжа', 'transport', 'розваги', 'навчання', "здоров'я", 'комунальні', 'одяг', 'інше']
 
 function BudgetSection({ userId, currency }) {
+  const { t } = useTranslation()
   const [budgets, setBudgets] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [cat, setCat] = useState('їжа')
@@ -209,10 +214,10 @@ function BudgetSection({ userId, currency }) {
           <div className="w-5 h-5 rounded bg-blue-500/15 flex items-center justify-center">
             <Target className="w-3 h-3 text-blue-400" />
           </div>
-          <p className="section-label">Бюджет на місяць</p>
+          <p className="section-label">{t('finance.budget_title')}</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-ghost text-xs px-2 py-1">
-          <Plus className="w-3.5 h-3.5" /> Ліміт
+          <Plus className="w-3.5 h-3.5" /> {t('finance.budget_add')}
         </button>
       </div>
 
@@ -222,7 +227,7 @@ function BudgetSection({ userId, currency }) {
             <select value={cat} onChange={e => setCat(e.target.value)} className="input flex-1 bg-zinc-900 text-sm">
               {BUDGET_CATS.map(c => <option key={c}>{c}</option>)}
             </select>
-            <input type="number" min="0" placeholder="Ліміт" value={limit}
+            <input type="number" min="0" placeholder={t('finance.budget_limit')} value={limit}
               onChange={e => setLimit(e.target.value)}
               className="input w-28 text-sm" />
             <button onClick={save} disabled={saving || !limit} className="btn-primary text-xs px-3">
@@ -242,7 +247,7 @@ function BudgetSection({ userId, currency }) {
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <span className={`badge border ${CAT_COLOR[b.category] || CAT_COLOR['інше']}`}>{b.category}</span>
-                    {over && <span className="text-xs text-red-400 font-medium">Перевищено!</span>}
+                    {over && <span className="text-xs text-red-400 font-medium">{t('finance.budget_over')}</span>}
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className={over ? 'text-red-400 font-semibold' : 'text-zinc-400'}>
@@ -265,7 +270,7 @@ function BudgetSection({ userId, currency }) {
         </ul>
       ) : (
         <div className="px-5 py-6 text-center text-sm text-zinc-600">
-          Встанови місячний ліміт для категорій щоб відстежувати бюджет
+          {t('finance.budget_empty')}
         </div>
       )}
     </div>
@@ -273,6 +278,7 @@ function BudgetSection({ userId, currency }) {
 }
 
 export default function Finance() {
+  const { t } = useTranslation()
   const userId = useStore((s) => s.userId)
   const [data, setData] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -307,15 +313,14 @@ export default function Finance() {
 
   return (
     <div className="page-narrow">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">Фінанси</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">Витрати та транзакції</p>
+          <h1 className="page-title">{t('finance.title')}</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{t('finance.subtitle')}</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
           <Plus className="w-4 h-4" />
-          Додати
+          {t('finance.btn_add')}
         </button>
       </div>
 
@@ -323,10 +328,10 @@ export default function Finance() {
         {/* Add form */}
         {showForm && (
           <div className="card p-5 animate-fade-in">
-            <h3 className="text-sm font-medium text-zinc-200 mb-4">Нова витрата</h3>
+            <h3 className="text-sm font-medium text-zinc-200 mb-4">{t('finance.form_title')}</h3>
             <div className="space-y-3">
               <div className="flex gap-2">
-                <input type="number" min="0" placeholder="Сума" value={amount}
+                <input type="number" min="0" placeholder={t('finance.amount_label')} value={amount}
                   onChange={e => setAmount(e.target.value)}
                   className="input flex-1" />
                 <select value={currency} onChange={e => setCurrency(e.target.value)}
@@ -336,19 +341,21 @@ export default function Finance() {
               </div>
               <select value={category} onChange={e => { setCategory(e.target.value); setHint(null) }}
                 className="input bg-zinc-900">
-                {CATS.map(c => <option key={c}>{c === 'авто' ? '✨ Авто-визначення' : c}</option>)}
+                {CATS.map(c => <option key={c}>{c === 'авто' ? t('finance.auto_category') : c}</option>)}
               </select>
               <div>
-                <input type="text" placeholder="Опис (ATB, Uber, Netflix...)" value={desc}
+                <input type="text" placeholder={t('finance.desc_placeholder')} value={desc}
                   onChange={e => onDescChange(e.target.value)}
                   className="input" />
                 {category === 'авто' && hint && (
-                  <p className="text-xs text-blue-400 mt-1.5 ml-0.5">✓ Виявлено: <strong>{hint}</strong></p>
+                  <p className="text-xs text-blue-400 mt-1.5 ml-0.5">{t('finance.hint_category')} <strong>{hint}</strong></p>
                 )}
               </div>
               <div className="flex gap-2 pt-1">
-                <button onClick={save} disabled={saving || !amount} className="btn-primary flex-1">{saving ? 'Збереження...' : 'Зберегти'}</button>
-                <button onClick={() => setShowForm(false)} className="btn-outline flex-1">Скасувати</button>
+                <button onClick={save} disabled={saving || !amount} className="btn-primary flex-1">
+                  {saving ? t('finance.btn_saving') : t('finance.btn_save')}
+                </button>
+                <button onClick={() => setShowForm(false)} className="btn-outline flex-1">{t('finance.btn_cancel')}</button>
               </div>
             </div>
           </div>
@@ -370,7 +377,7 @@ export default function Finance() {
           <div className="card p-5">
             <div className="flex items-end justify-between mb-4">
               <div>
-                <p className="section-label mb-1">Загальні витрати</p>
+                <p className="section-label mb-1">{t('finance.summary_title')}</p>
                 <div className="stat-value">{data.total_spent?.toFixed(0)}
                   <span className="text-sm font-normal text-zinc-500 ml-1.5">{data.currency}</span>
                 </div>
@@ -404,9 +411,11 @@ export default function Finance() {
         {/* Transactions list */}
         <div className="card overflow-hidden">
           <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
-            <p className="section-label">Останні транзакції</p>
+            <p className="section-label">{t('finance.recent_title')}</p>
             {data?.recent_transactions?.length > 0 && (
-              <span className="text-2xs text-zinc-600 tabular-nums">{data.recent_transactions.length} записів</span>
+              <span className="text-2xs text-zinc-600 tabular-nums">
+                {t('finance.recent_count', { count: data.recent_transactions.length })}
+              </span>
             )}
           </div>
           {data?.recent_transactions?.length ? (
@@ -434,8 +443,8 @@ export default function Finance() {
           ) : (
             <div className="flex flex-col items-center py-10 gap-3">
               <IllustrationFinance />
-              <p className="empty-state-title">Транзакцій ще немає</p>
-              <p className="empty-state-sub">Напиши у чаті або натисни «+ Додати»</p>
+              <p className="empty-state-title">{t('finance.no_transactions_title')}</p>
+              <p className="empty-state-sub">{t('finance.no_transactions_sub')}</p>
             </div>
           )}
         </div>
