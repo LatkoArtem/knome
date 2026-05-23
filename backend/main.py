@@ -29,6 +29,7 @@ from api.reflection import router as reflection_router
 from api.relationships import router as relationships_router
 from api.career import router as career_router
 from api.subscriptions import router as subscriptions_router
+from api.goals import router as goals_router
 from triggers import engine as trigger_engine
 
 logging.basicConfig(
@@ -87,3 +88,4 @@ app.include_router(reflection_router)
 app.include_router(relationships_router)
 app.include_router(career_router)
 app.include_router(subscriptions_router)
+app.include_router(goals_router)

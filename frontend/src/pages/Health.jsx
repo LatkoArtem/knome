@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import { IllustrationHealth } from '../components/Illustrations'
 
@@ -34,6 +35,7 @@ function Slider({ label, value, onChange, min = 1, max = 10, thumbColor = '#3b82
 
 /* ═══════════════════════════════════════════════════════════ */
 export default function Health() {
+  const { t } = useTranslation()
   const userId = useStore((s) => s.userId)
   const [data,   setData]   = useState(null)
   const [sleep,  setSleep]  = useState(7)
@@ -64,10 +66,10 @@ export default function Health() {
 
   const moodEmoji   = mood <= 3 ? '😔' : mood <= 5 ? '😐' : mood <= 7 ? '🙂' : '😊'
   const sleepStatus = sleep < 6
-    ? { text: 'Мало сну', c: 'text-red-400' }
+    ? { text: t('health.sleep_low'), c: 'text-red-400' }
     : sleep < 7
-      ? { text: 'Нормально', c: 'text-amber-400' }
-      : { text: 'Відмінно', c: 'text-emerald-400' }
+      ? { text: t('health.sleep_ok'), c: 'text-amber-400' }
+      : { text: t('health.sleep_great'), c: 'text-emerald-400' }
 
   const sleepPct = Math.min((sleep / 12) * 100, 100)
   const sleepTrack = {
@@ -77,8 +79,8 @@ export default function Health() {
   return (
     <div className="page-narrow">
       <div className="mb-6">
-        <h1 className="page-title">Здоров'я</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">Щоденний трекінг самопочуття</p>
+        <h1 className="page-title">{t('health.title')}</h1>
+        <p className="text-sm text-zinc-500 mt-0.5">{t('health.subtitle')}</p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
@@ -87,14 +89,14 @@ export default function Health() {
         <div className="card accent-health p-5 sm:row-span-2">
           <div className="flex items-center gap-2 mb-5">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse-soft" />
-            <h2 className="text-sm font-semibold text-zinc-200">Щоденний check-in</h2>
+            <h2 className="text-sm font-semibold text-zinc-200">{t('health.checkin_title')}</h2>
           </div>
 
           <div className="space-y-6">
             {/* Sleep */}
             <div>
               <div className="flex items-center justify-between mb-2.5">
-                <label className="text-sm font-medium text-zinc-300">🌙 Сон (годин)</label>
+                <label className="text-sm font-medium text-zinc-300">{t('health.sleep_label')}</label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-zinc-100 tabular-nums">
                     {sleep}<span className="text-zinc-500 font-normal text-xs"> год</span>
@@ -110,13 +112,13 @@ export default function Health() {
               <div className="flex justify-between text-2xs text-zinc-700 mt-1"><span>0</span><span>12 год</span></div>
             </div>
 
-            <Slider label={`${moodEmoji} Настрій`}  value={mood}   onChange={setMood}   thumbColor="#f43f5e" />
-            <Slider label="⚡ Енергія"              value={energy} onChange={setEnergy} thumbColor="#f59e0b" />
+            <Slider label={`${moodEmoji} ${t('health.mood_label')}`}  value={mood}   onChange={setMood}   thumbColor="#f43f5e" />
+            <Slider label={`⚡ ${t('health.energy_label')}`}          value={energy} onChange={setEnergy} thumbColor="#f59e0b" />
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">📝 Нотатки</label>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">📝 {t('health.notes_label')}</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
-                placeholder="Як себе почуваєш сьогодні?..."
+                placeholder={t('health.notes_placeholder')}
                 className="input" />
             </div>
 
@@ -124,11 +126,11 @@ export default function Health() {
               {saving ? (
                 <span className="flex items-center gap-2 justify-center">
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Зберігаємо...
+                  {t('health.btn_saving')}
                 </span>
               ) : saved
-                ? <span className="text-emerald-300">✓ Check-in збережено!</span>
-                : 'Зберегти check-in'
+                ? <span className="text-emerald-300">{t('health.btn_saved')}</span>
+                : t('health.btn_save')
               }
             </button>
           </div>
@@ -138,15 +140,15 @@ export default function Health() {
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <h2 className="text-sm font-semibold text-zinc-200">Середнє за тиждень</h2>
+            <h2 className="text-sm font-semibold text-zinc-200">{t('health.stats_title')}</h2>
           </div>
           {data ? (
             <div className="grid grid-cols-2 gap-2.5">
               {[
-                { label: 'Настрій',  value: data.avg_mood_7d,                        unit: '/10',   color: 'text-rose-400',    icon: '❤️', bg: 'bg-rose-500/8' },
-                { label: 'Сон',      value: data.avg_sleep_7d,                        unit: 'г',     color: 'text-blue-400',    icon: '🌙', bg: 'bg-blue-500/8' },
-                { label: 'Check-in', value: data.checkin_count,                       unit: 'дн.',   color: 'text-emerald-400', icon: '✅', bg: 'bg-emerald-500/8' },
-                { label: 'Калорії',  value: data.avg_calories_7d?.toFixed(0) || '—', unit: 'ккал',  color: 'text-amber-400',   icon: '🍽️', bg: 'bg-amber-500/8' },
+                { label: t('health.stat_mood'),    value: data.avg_mood_7d,                        unit: '/10',  color: 'text-rose-400',    icon: '❤️', bg: 'bg-rose-500/8' },
+                { label: t('health.stat_sleep'),   value: data.avg_sleep_7d,                        unit: 'г',    color: 'text-blue-400',    icon: '🌙', bg: 'bg-blue-500/8' },
+                { label: t('health.stat_checkin'), value: data.checkin_count,                       unit: t('health.unit_days'), color: 'text-emerald-400', icon: '✅', bg: 'bg-emerald-500/8' },
+                { label: t('health.stat_cal'),     value: data.avg_calories_7d?.toFixed(0) || '—', unit: t('health.unit_kcal'), color: 'text-amber-400',   icon: '🍽️', bg: 'bg-amber-500/8' },
               ].map(({ label, value, unit, color, icon, bg }) => (
                 <div key={label} className={`${bg} rounded-xl p-3.5 border border-white/[0.04]`}>
                   <p className="text-2xs text-zinc-500 mb-2">{icon} {label}</p>
@@ -160,8 +162,8 @@ export default function Health() {
           ) : (
             <div className="empty-state py-4">
               <IllustrationHealth />
-              <p className="empty-state-title">Зроби перший check-in</p>
-              <p className="empty-state-sub">Статистика з'явиться тут</p>
+              <p className="empty-state-title">{t('health.empty_title')}</p>
+              <p className="empty-state-sub">{t('health.empty_sub')}</p>
             </div>
           )}
         </div>
@@ -169,7 +171,7 @@ export default function Health() {
         {/* ── Trend chart ── */}
         {data?.recent_checkins?.length > 1 && (
           <div className="card p-5 sm:col-span-2">
-            <p className="section-label mb-4">Тренд настрою і сну</p>
+            <p className="section-label mb-4">{t('health.trend_title')}</p>
             <ResponsiveContainer width="100%" height={140}>
               <LineChart
                 data={[...data.recent_checkins].reverse().map(c => ({
@@ -187,8 +189,8 @@ export default function Health() {
                   cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: '#71717a', paddingTop: 8 }} />
-                <Line type="monotone" dataKey="mood"  stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: '#f43f5e', strokeWidth: 0 }} name="Настрій" />
-                <Line type="monotone" dataKey="sleep" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }} name="Сон (год)" />
+                <Line type="monotone" dataKey="mood"  stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: '#f43f5e', strokeWidth: 0 }} name={t('health.stat_mood')} />
+                <Line type="monotone" dataKey="sleep" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }} name={t('health.chart_sleep')} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -197,8 +199,8 @@ export default function Health() {
         {/* ── History ── */}
         <div className="card overflow-hidden sm:col-span-2">
           <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
-            <p className="section-label">Останні записи</p>
-            <span className="text-2xs text-zinc-600 tabular-nums">{data?.checkin_count ?? 0} записів</span>
+            <p className="section-label">{t('health.history_title')}</p>
+            <span className="text-2xs text-zinc-600 tabular-nums">{data?.checkin_count ?? 0}</span>
           </div>
           {data?.recent_checkins?.length ? (
             <ul className="divide-y divide-white/[0.04]">
@@ -215,7 +217,7 @@ export default function Health() {
             </ul>
           ) : (
             <p className="px-5 py-8 text-center text-sm text-zinc-600">
-              Записів ще немає — зроби перший check-in!
+              {t('health.history_empty')}
             </p>
           )}
         </div>

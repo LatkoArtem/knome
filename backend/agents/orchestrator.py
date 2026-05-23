@@ -9,6 +9,7 @@ import agents.productivity as productivity_agent
 import agents.reflection as reflection_agent
 import agents.relationships as relationships_agent
 import agents.career as career_agent
+import agents.goals as goals_agent
 from graph.queries import commit_updates, get_user_context
 from llm.client import llm_respond
 from llm.prompts import GENERAL_SYSTEM
@@ -60,6 +61,10 @@ _CAREER_KW = [
     "навичка", "скіл", "skill", "досягнення", "achievement", "кар'єра",
     "career", "резюме", "resume", "портфоліо", "portfolio", "cv",
 ]
+_GOALS_KW = [
+    "ціль", "мета", "bucket list", "бакет ліст", "мрія", "мрію",
+    "life goal", "хочу досягти", "хочу зробити", "список мрій",
+]
 
 
 def _classify_domain(text: str) -> str:
@@ -73,6 +78,7 @@ def _classify_domain(text: str) -> str:
         "reflection": sum(1 for w in _REFLECTION_KW if w in text_lower),
         "relationships": sum(1 for w in _RELATIONSHIPS_KW if w in text_lower),
         "career": sum(1 for w in _CAREER_KW if w in text_lower),
+        "goals": sum(1 for w in _GOALS_KW if w in text_lower),
     }
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "general"
@@ -140,6 +146,13 @@ async def run_career(state: KnomeState) -> dict:
     return {"response": response, "graph_updates": updates}
 
 
+async def run_goals(state: KnomeState) -> dict:
+    response, updates = await goals_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
+    return {"response": response, "graph_updates": updates}
+
+
 async def run_general(state: KnomeState) -> dict:
     ctx = state.get("graph_context", {})
     user_name = ctx.get("user", {}).get("name", "")
@@ -187,6 +200,7 @@ def create_orchestrator():
     graph.add_node("run_reflection", run_reflection)
     graph.add_node("run_relationships", run_relationships)
     graph.add_node("run_career", run_career)
+    graph.add_node("run_goals", run_goals)
     graph.add_node("run_general", run_general)
     graph.add_node("apply_updates", apply_updates)
 
@@ -203,6 +217,7 @@ def create_orchestrator():
             "reflection": "run_reflection",
             "relationships": "run_relationships",
             "career": "run_career",
+            "goals": "run_goals",
             "general": "run_general",
         },
     )
@@ -214,6 +229,7 @@ def create_orchestrator():
     graph.add_edge("run_reflection", "apply_updates")
     graph.add_edge("run_relationships", "apply_updates")
     graph.add_edge("run_career", "apply_updates")
+    graph.add_edge("run_goals", "apply_updates")
     graph.add_edge("run_general", "apply_updates")
     graph.add_edge("apply_updates", END)
 

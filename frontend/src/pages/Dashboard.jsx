@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Wallet, Heart, Battery, TrendingUp, Brain, FileText, RefreshCw, ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
 const API = 'http://localhost:8000/api'
@@ -62,14 +63,15 @@ function InsightItem({ insight }) {
 }
 
 /* ── Burnout level config ───────────────────────────────────── */
-const BURNOUT = {
-  low:    { bar: 'bg-emerald-500', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', label: 'Низький' },
-  medium: { bar: 'bg-amber-500',   badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',       label: 'Середній' },
-  high:   { bar: 'bg-red-500',     badge: 'bg-red-500/10 text-red-400 border-red-500/20',             label: 'Високий' },
+const BURNOUT_STYLES = {
+  low:    { bar: 'bg-emerald-500', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  medium: { bar: 'bg-amber-500',   badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20'       },
+  high:   { bar: 'bg-red-500',     badge: 'bg-red-500/10 text-red-400 border-red-500/20'             },
 }
 
 /* ═══════════════════════════════════════════════════════════ */
 export default function Dashboard() {
+  const { t } = useTranslation()
   const userId   = useStore((s) => s.userId)
   const userName = useStore((s) => s.userName)
 
@@ -114,15 +116,15 @@ export default function Dashboard() {
     })
   }, [userId])
 
-  const bs = burnout ? BURNOUT[burnout.level] ?? BURNOUT.low : null
-  const greeting = userName ? `Привіт, ${userName} 👋` : 'Дашборд'
+  const bs = burnout ? BURNOUT_STYLES[burnout.level] ?? BURNOUT_STYLES.low : null
+  const greeting = userName ? t('dashboard.greeting', { name: userName }) : t('dashboard.title')
 
   return (
     <div className="page">
       {/* ── Header ── */}
       <div className="mb-8">
         <h1 className="page-title">{greeting}</h1>
-        <p className="text-sm text-zinc-500 mt-1">Твій персональний AI-огляд</p>
+        <p className="text-sm text-zinc-500 mt-1">{t('dashboard.subtitle')}</p>
       </div>
 
       {/* ── Bento Grid ── */}
@@ -131,31 +133,31 @@ export default function Dashboard() {
         {/* Learning */}
         <StatCard to="/learning" accentClass="accent-learning"
           Icon={BookOpen} iconBg="bg-indigo-500/15" iconColor="text-indigo-400"
-          label="Навчання">
+          label={t('dashboard.card_learning')}>
           {loading ? <><Skel h="h-7 mb-1.5" w="w-16" /><Skel h="h-3" w="w-28" /></>
           : learning ? (
             <>
               <div className="stat-value-sm">{learning.sessions_this_week}
-                <span className="text-xs font-normal text-zinc-500 ml-1.5">сесій</span>
+                <span className="text-xs font-normal text-zinc-500 ml-1.5">{t('dashboard.unit_sessions')}</span>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">
-                {learning.total_minutes} хв · {learning.goals?.length ?? 0} цілей
+                {learning.total_minutes} {t('dashboard.unit_min')} · {learning.goals?.length ?? 0} {t('dashboard.unit_goals')}
               </p>
             </>
-          ) : <p className="text-sm text-zinc-600">Дані відсутні</p>}
+          ) : <p className="text-sm text-zinc-600">{t('dashboard.no_data')}</p>}
         </StatCard>
 
         {/* Finance */}
         <StatCard to="/finance" accentClass="accent-finance"
           Icon={Wallet} iconBg="bg-emerald-500/15" iconColor="text-emerald-400"
-          label="Фінанси">
+          label={t('dashboard.card_finance')}>
           {loading ? <><Skel h="h-7 mb-1.5" w="w-24" /><Skel h="h-3" w="w-20" /></>
           : finance ? (
             <>
               <div className="stat-value-sm">{finance.total_spent?.toFixed(0)}
                 <span className="text-xs font-normal text-zinc-500 ml-1.5">{finance.currency}</span>
               </div>
-              <p className="text-xs text-zinc-500 mt-0.5">{finance.recent_transactions?.length ?? 0} транзакцій</p>
+              <p className="text-xs text-zinc-500 mt-0.5">{finance.recent_transactions?.length ?? 0} {t('dashboard.unit_tx')}</p>
               {finance.by_category && (
                 <div className="flex gap-1 flex-wrap mt-1.5">
                   {Object.entries(finance.by_category).slice(0, 3).map(([cat]) => (
@@ -164,13 +166,13 @@ export default function Dashboard() {
                 </div>
               )}
             </>
-          ) : <p className="text-sm text-zinc-600">Дані відсутні</p>}
+          ) : <p className="text-sm text-zinc-600">{t('dashboard.no_data')}</p>}
         </StatCard>
 
         {/* Health */}
         <StatCard to="/health" accentClass="accent-health sm:col-span-2 lg:col-span-1"
           Icon={Heart} iconBg="bg-rose-500/15" iconColor="text-rose-400"
-          label="Здоров'я">
+          label={t('dashboard.card_health')}>
           {loading ? <><Skel h="h-7 mb-1.5" w="w-28" /><Skel h="h-3" w="w-20" /></>
           : health && (health.avg_mood_7d || health.avg_sleep_7d) ? (
             <>
@@ -178,17 +180,17 @@ export default function Dashboard() {
                 <div>
                   <span className="stat-value-sm">{health.avg_mood_7d ?? '—'}</span>
                   <span className="text-xs text-zinc-500">/10</span>
-                  <p className="text-2xs text-zinc-600 mt-0.5">Настрій</p>
+                  <p className="text-2xs text-zinc-600 mt-0.5">{t('dashboard.label_mood')}</p>
                 </div>
                 <div>
                   <span className="stat-value-sm">{health.avg_sleep_7d ?? '—'}</span>
                   <span className="text-xs text-zinc-500">г</span>
-                  <p className="text-2xs text-zinc-600 mt-0.5">Сон</p>
+                  <p className="text-2xs text-zinc-600 mt-0.5">{t('dashboard.label_sleep')}</p>
                 </div>
               </div>
-              <p className="text-xs text-zinc-600 mt-1">{health.checkin_count ?? 0} check-in за тиждень</p>
+              <p className="text-xs text-zinc-600 mt-1">{health.checkin_count ?? 0} {t('dashboard.checkin_week')}</p>
             </>
-          ) : <p className="text-sm text-zinc-600">Дані відсутні</p>}
+          ) : <p className="text-sm text-zinc-600">{t('dashboard.no_data')}</p>}
         </StatCard>
 
         {/* Burnout — wide */}
@@ -198,11 +200,11 @@ export default function Dashboard() {
               <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
                 <Battery className="w-4 h-4 text-amber-400" />
               </div>
-              <p className="section-label">Ризик вигорання</p>
+              <p className="section-label">{t('dashboard.burnout_title')}</p>
             </div>
             {bs && (
               <span className={`badge font-semibold ${bs.badge}`}>
-                {bs.label} · {burnout.score}/100
+                {t(`dashboard.burnout_${burnout.level}`)} · {burnout.score}/100
               </span>
             )}
           </div>
@@ -220,7 +222,7 @@ export default function Dashboard() {
                 <p className="text-xs text-zinc-500 leading-relaxed">{burnout.recommendations[0]}</p>
               )}
             </>
-          ) : <p className="text-sm text-zinc-600">Потрібні check-ini для аналізу</p>}
+          ) : <p className="text-sm text-zinc-600">{t('dashboard.burnout_no_data')}</p>}
         </div>
 
         {/* Forecast */}
@@ -229,7 +231,7 @@ export default function Dashboard() {
             <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-blue-400" />
             </div>
-            <p className="section-label">Прогноз (30 дн.)</p>
+            <p className="section-label">{t('dashboard.forecast_title')}</p>
           </div>
           {loading ? (
             <><Skel h="h-7 mb-1.5" w="w-20" /><Skel h="h-3 mb-1" /><Skel h="h-3" w="w-28" /></>
@@ -249,7 +251,7 @@ export default function Dashboard() {
               </div>
               {forecast.warning && <p className="text-2xs text-amber-500/80 mt-2">{forecast.warning}</p>}
             </>
-          ) : <p className="text-sm text-zinc-600">{forecast?.warning || 'Потрібно більше транзакцій'}</p>}
+          ) : <p className="text-sm text-zinc-600">{forecast?.warning || t('dashboard.forecast_no_data')}</p>}
         </div>
 
         {/* Insights — full width */}
@@ -258,12 +260,12 @@ export default function Dashboard() {
             <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
               <Brain className="w-4 h-4 text-violet-400" />
             </div>
-            <p className="section-label">AI Інсайти</p>
+            <p className="section-label">{t('dashboard.insights_title')}</p>
           </div>
           {insLoading ? (
             <div className="flex items-center gap-2 text-sm text-zinc-600">
               <span className="w-3.5 h-3.5 border-2 border-zinc-700 border-t-violet-500 rounded-full animate-spin" />
-              Аналізую твої дані...
+              {t('dashboard.insights_loading')}
             </div>
           ) : insights && insights.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-0">
@@ -271,8 +273,8 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="empty-state py-6">
-              <p className="empty-state-title">Інсайти з'являться після накопичення даних</p>
-              <p className="empty-state-sub">Починай записувати check-ini і транзакції</p>
+              <p className="empty-state-title">{t('dashboard.insights_empty_title')}</p>
+              <p className="empty-state-sub">{t('dashboard.insights_empty_sub')}</p>
             </div>
           )}
         </div>
@@ -284,21 +286,19 @@ export default function Dashboard() {
               <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center">
                 <FileText className="w-4 h-4 text-sky-400" />
               </div>
-              <p className="section-label">Тижневий AI-звіт</p>
+              <p className="section-label">{t('dashboard.report_title')}</p>
             </div>
             <button onClick={generateReport} disabled={repLoading} className="btn-outline text-xs px-3 py-1.5">
               {repLoading
-                ? <span className="flex items-center gap-1.5"><RefreshCw className="w-3 h-3 animate-spin" />Генеруємо...</span>
-                : report ? '↻ Оновити' : '✨ Згенерувати'
+                ? <span className="flex items-center gap-1.5"><RefreshCw className="w-3 h-3 animate-spin" />{t('dashboard.report_generating')}</span>
+                : report ? t('dashboard.report_refresh') : t('dashboard.report_generate')
               }
             </button>
           </div>
           {report ? (
             <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap animate-fade-in">{report}</p>
           ) : (
-            <p className="text-sm text-zinc-600">
-              AI-звіт підсумує твій тиждень — навчання, здоров'я, фінанси.
-            </p>
+            <p className="text-sm text-zinc-600">{t('dashboard.report_hint')}</p>
           )}
         </div>
 

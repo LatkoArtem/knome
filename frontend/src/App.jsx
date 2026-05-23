@@ -17,6 +17,8 @@ import Productivity from './pages/Productivity'
 import Reflection from './pages/Reflection'
 import Relationships from './pages/Relationships'
 import Career from './pages/Career'
+import Goals from './pages/Goals'
+import Subscriptions from './pages/Subscriptions'
 import Settings from './pages/Settings'
 
 function PrivateRoute({ children }) {
@@ -86,8 +88,10 @@ export default function App() {
               <Route path="/productivity"  element={<PrivateRoute><Productivity /></PrivateRoute>} />
               <Route path="/reflection"    element={<PrivateRoute><Reflection /></PrivateRoute>} />
               <Route path="/relationships" element={<PrivateRoute><Relationships /></PrivateRoute>} />
-              <Route path="/career"        element={<PrivateRoute><Career /></PrivateRoute>} />
-              <Route path="/settings"      element={<PrivateRoute><Settings /></PrivateRoute>} />
+              <Route path="/career"         element={<PrivateRoute><Career /></PrivateRoute>} />
+              <Route path="/goals"          element={<PrivateRoute><Goals /></PrivateRoute>} />
+              <Route path="/subscriptions"  element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
+              <Route path="/settings"       element={<PrivateRoute><Settings /></PrivateRoute>} />
               <Route path="/"           element={<Navigate to="/chat" replace />} />
             </Routes>
           </Shell>

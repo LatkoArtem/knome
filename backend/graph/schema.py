@@ -415,3 +415,34 @@ def init_schema() -> None:
 
     # Finance expansion edges
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_SUBSCRIPTION (FROM User TO Subscription)")
+
+    # --- Goals nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS LifeGoal (
+            id STRING,
+            title STRING,
+            description STRING,
+            category STRING,
+            status STRING,
+            target_date STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS BucketItem (
+            id STRING,
+            title STRING,
+            category STRING,
+            status STRING,
+            completed_date STRING,
+            notes STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # Goals edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_LIFE_GOAL (FROM User TO LifeGoal)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_BUCKET_ITEM (FROM User TO BucketItem)")

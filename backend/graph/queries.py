@@ -921,3 +921,78 @@ def get_subscriptions(user_id: str, active_only: bool = True) -> list[dict]:
 def deactivate_subscription(sub_id: str) -> None:
     conn = get_connection()
     conn.execute("MATCH (s:Subscription {id: $id}) SET s.is_active = false", {"id": sub_id})
+
+
+# --- Goals ---
+
+def add_life_goal(
+    user_id: str, title: str, description: str = "",
+    category: str = "personal", target_date: str = ""
+) -> str:
+    conn = get_connection()
+    gid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:LifeGoal {id: $id, title: $title, description: $desc, "
+        "category: $cat, status: $status, target_date: $td, created_at: $ts})",
+        {"id": gid, "title": title, "desc": description, "cat": category,
+         "status": "active", "td": target_date, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (g:LifeGoal {id: $gid}) CREATE (u)-[:HAS_LIFE_GOAL]->(g)",
+        {"uid": user_id, "gid": gid},
+    )
+    return gid
+
+
+def get_life_goals(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_LIFE_GOAL]->(g:LifeGoal) "
+        "RETURN g.id, g.title, g.description, g.category, g.status, g.target_date, g.created_at "
+        "ORDER BY g.created_at DESC",
+        {"uid": user_id})
+    return [{"id": r[0], "title": r[1], "description": r[2],
+             "category": r[3], "status": r[4], "target_date": r[5], "created_at": r[6]} for r in rows]
+
+
+def update_life_goal_status(goal_id: str, status: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (g:LifeGoal {id: $id}) SET g.status = $status", {"id": goal_id, "status": status})
+
+
+def add_bucket_item(
+    user_id: str, title: str, category: str = "adventure", notes: str = ""
+) -> str:
+    conn = get_connection()
+    bid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:BucketItem {id: $id, title: $title, category: $cat, "
+        "status: $status, completed_date: $cd, notes: $notes, created_at: $ts})",
+        {"id": bid, "title": title, "cat": category,
+         "status": "pending", "cd": "", "notes": notes, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (b:BucketItem {id: $bid}) CREATE (u)-[:HAS_BUCKET_ITEM]->(b)",
+        {"uid": user_id, "bid": bid},
+    )
+    return bid
+
+
+def get_bucket_items(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_BUCKET_ITEM]->(b:BucketItem) "
+        "RETURN b.id, b.title, b.category, b.status, b.completed_date, b.notes, b.created_at "
+        "ORDER BY b.created_at DESC",
+        {"uid": user_id})
+    return [{"id": r[0], "title": r[1], "category": r[2],
+             "status": r[3], "completed_date": r[4], "notes": r[5], "created_at": r[6]} for r in rows]
+
+
+def complete_bucket_item(item_id: str) -> None:
+    conn = get_connection()
+    from datetime import date
+    conn.execute(
+        "MATCH (b:BucketItem {id: $id}) SET b.status = $status, b.completed_date = $cd",
+        {"id": item_id, "status": "done", "cd": date.today().isoformat()},
+    )
