@@ -6,6 +6,9 @@ import agents.financial as financial_agent
 import agents.health as health_agent
 import agents.workout as workout_agent
 import agents.productivity as productivity_agent
+import agents.reflection as reflection_agent
+import agents.relationships as relationships_agent
+import agents.career as career_agent
 from graph.queries import commit_updates, get_user_context
 from llm.client import llm_respond
 from llm.prompts import GENERAL_SYSTEM
@@ -44,6 +47,19 @@ _PRODUCTIVITY_KW = [
     "таймер фокус", "task", "todo", "список задач", "план на день",
     "треба зробити", "починаю фокус",
 ]
+_REFLECTION_KW = [
+    "щоденник", "journal", "записати думки", "вдячний", "вдячна",
+    "gratitude", "тижневий огляд", "weekly review", "рефлекс",
+    "підсумок тижня", "3 речі", "нотатка",
+]
+_RELATIONSHIPS_KW = [
+    "контакт", "contact", "знайомий", "друг", "подруга", "день народження",
+    "birthday", "crm", "люди", "relationships", "познайомився", "познайомилась",
+]
+_CAREER_KW = [
+    "навичка", "скіл", "skill", "досягнення", "achievement", "кар'єра",
+    "career", "резюме", "resume", "портфоліо", "portfolio", "cv",
+]
 
 
 def _classify_domain(text: str) -> str:
@@ -54,6 +70,9 @@ def _classify_domain(text: str) -> str:
         "health": sum(1 for w in _HEALTH_KW if w in text_lower),
         "workout": sum(1 for w in _WORKOUT_KW if w in text_lower),
         "productivity": sum(1 for w in _PRODUCTIVITY_KW if w in text_lower),
+        "reflection": sum(1 for w in _REFLECTION_KW if w in text_lower),
+        "relationships": sum(1 for w in _RELATIONSHIPS_KW if w in text_lower),
+        "career": sum(1 for w in _CAREER_KW if w in text_lower),
     }
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "general"
@@ -95,6 +114,27 @@ async def run_workout(state: KnomeState) -> dict:
 
 async def run_productivity(state: KnomeState) -> dict:
     response, updates = await productivity_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
+    return {"response": response, "graph_updates": updates}
+
+
+async def run_reflection(state: KnomeState) -> dict:
+    response, updates = await reflection_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
+    return {"response": response, "graph_updates": updates}
+
+
+async def run_relationships(state: KnomeState) -> dict:
+    response, updates = await relationships_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
+    return {"response": response, "graph_updates": updates}
+
+
+async def run_career(state: KnomeState) -> dict:
+    response, updates = await career_agent.process(
         state["user_message"], state["user_id"], context=state.get("graph_context")
     )
     return {"response": response, "graph_updates": updates}
@@ -144,6 +184,9 @@ def create_orchestrator():
     graph.add_node("run_health", run_health)
     graph.add_node("run_workout", run_workout)
     graph.add_node("run_productivity", run_productivity)
+    graph.add_node("run_reflection", run_reflection)
+    graph.add_node("run_relationships", run_relationships)
+    graph.add_node("run_career", run_career)
     graph.add_node("run_general", run_general)
     graph.add_node("apply_updates", apply_updates)
 
@@ -157,6 +200,9 @@ def create_orchestrator():
             "health": "run_health",
             "workout": "run_workout",
             "productivity": "run_productivity",
+            "reflection": "run_reflection",
+            "relationships": "run_relationships",
+            "career": "run_career",
             "general": "run_general",
         },
     )
@@ -165,6 +211,9 @@ def create_orchestrator():
     graph.add_edge("run_health", "apply_updates")
     graph.add_edge("run_workout", "apply_updates")
     graph.add_edge("run_productivity", "apply_updates")
+    graph.add_edge("run_reflection", "apply_updates")
+    graph.add_edge("run_relationships", "apply_updates")
+    graph.add_edge("run_career", "apply_updates")
     graph.add_edge("run_general", "apply_updates")
     graph.add_edge("apply_updates", END)
 

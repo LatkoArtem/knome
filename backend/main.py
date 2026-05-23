@@ -25,6 +25,10 @@ from api.user import router as user_router
 from api.report import router as report_router
 from api.workout import router as workout_router
 from api.productivity import router as productivity_router
+from api.reflection import router as reflection_router
+from api.relationships import router as relationships_router
+from api.career import router as career_router
+from api.subscriptions import router as subscriptions_router
 from triggers import engine as trigger_engine
 
 logging.basicConfig(
@@ -79,3 +83,7 @@ app.include_router(user_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
 app.include_router(workout_router, prefix="/api")
 app.include_router(productivity_router, prefix="/api")
+app.include_router(reflection_router)
+app.include_router(relationships_router)
+app.include_router(career_router)
+app.include_router(subscriptions_router)

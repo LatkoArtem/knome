@@ -701,3 +701,223 @@ def get_pomodoros_today(user_id: str) -> list[dict]:
         "RETURN ps.id, ps.task_id, ps.duration, ps.completed, ps.date",
         {"uid": user_id, "today": today})
     return [{"id": r[0], "task_id": r[1], "duration": r[2], "completed": r[3], "date": r[4]} for r in rows]
+
+
+# --- Reflection ---
+
+def add_journal_entry(user_id: str, text: str, mood: int = 5, energy: int = 5, tags: str = "") -> str:
+    conn = get_connection()
+    eid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:JournalEntry {id: $id, date: $date, text: $text, mood: $mood, energy: $energy, tags: $tags})",
+        {"id": eid, "date": _now(), "text": text, "mood": mood, "energy": energy, "tags": tags},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (j:JournalEntry {id: $eid}) CREATE (u)-[:WROTE]->(j)",
+        {"uid": user_id, "eid": eid},
+    )
+    return eid
+
+
+def get_journal_entries(user_id: str, limit: int = 10) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:WROTE]->(j:JournalEntry) "
+        f"RETURN j.id, j.date, j.text, j.mood, j.energy, j.tags "
+        f"ORDER BY j.date DESC LIMIT {limit}",
+        {"uid": user_id})
+    return [{"id": r[0], "date": r[1], "text": r[2], "mood": r[3], "energy": r[4], "tags": r[5]} for r in rows]
+
+
+def add_gratitude_entry(user_id: str, item1: str, item2: str = "", item3: str = "") -> str:
+    conn = get_connection()
+    gid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:GratitudeEntry {id: $id, date: $date, item1: $i1, item2: $i2, item3: $i3})",
+        {"id": gid, "date": _now(), "i1": item1, "i2": item2, "i3": item3},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (g:GratitudeEntry {id: $gid}) CREATE (u)-[:GRATEFUL]->(g)",
+        {"uid": user_id, "gid": gid},
+    )
+    return gid
+
+
+def get_gratitude_entries(user_id: str, limit: int = 7) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:GRATEFUL]->(g:GratitudeEntry) "
+        f"RETURN g.id, g.date, g.item1, g.item2, g.item3 "
+        f"ORDER BY g.date DESC LIMIT {limit}",
+        {"uid": user_id})
+    return [{"id": r[0], "date": r[1], "item1": r[2], "item2": r[3], "item3": r[4]} for r in rows]
+
+
+def add_weekly_review(
+    user_id: str, week: str, wins: str, challenges: str, focus: str, ai_summary: str = ""
+) -> str:
+    conn = get_connection()
+    rid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:WeeklyReview {id: $id, week: $week, wins: $wins, challenges: $ch, focus: $focus, ai_summary: $ai, created_at: $ts})",
+        {"id": rid, "week": week, "wins": wins, "ch": challenges, "focus": focus, "ai": ai_summary, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (r:WeeklyReview {id: $rid}) CREATE (u)-[:REVIEWED]->(r)",
+        {"uid": user_id, "rid": rid},
+    )
+    return rid
+
+
+def get_weekly_reviews(user_id: str, limit: int = 5) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:REVIEWED]->(r:WeeklyReview) "
+        f"RETURN r.id, r.week, r.wins, r.challenges, r.focus, r.ai_summary, r.created_at "
+        f"ORDER BY r.created_at DESC LIMIT {limit}",
+        {"uid": user_id})
+    return [{"id": r[0], "week": r[1], "wins": r[2], "challenges": r[3],
+             "focus": r[4], "ai_summary": r[5], "created_at": r[6]} for r in rows]
+
+
+# --- Relationships ---
+
+def add_contact(
+    user_id: str, name: str, relationship_type: str = "friend",
+    birthday: str = "", notes: str = "", tags: str = "",
+) -> str:
+    conn = get_connection()
+    cid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Contact {id: $id, name: $name, relationship_type: $rtype, "
+        "birthday: $bday, notes: $notes, tags: $tags, created_at: $ts})",
+        {"id": cid, "name": name, "rtype": relationship_type,
+         "bday": birthday, "notes": notes, "tags": tags, "ts": _now()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (c:Contact {id: $cid}) CREATE (u)-[:KNOWS]->(c)",
+        {"uid": user_id, "cid": cid},
+    )
+    return cid
+
+
+def get_contacts(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:KNOWS]->(c:Contact) "
+        "RETURN c.id, c.name, c.relationship_type, c.birthday, c.notes, c.tags, c.created_at "
+        "ORDER BY c.name ASC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "relationship_type": r[2],
+             "birthday": r[3], "notes": r[4], "tags": r[5], "created_at": r[6]} for r in rows]
+
+
+def delete_contact(contact_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (c:Contact {id: $id}) DETACH DELETE c", {"id": contact_id})
+
+
+# --- Career ---
+
+def add_career_skill(user_id: str, name: str, level: int = 5, category: str = "general") -> str:
+    conn = get_connection()
+    from datetime import date
+    sid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:CareerSkill {id: $id, name: $name, level: $level, category: $cat, last_used: $lu})",
+        {"id": sid, "name": name, "level": level, "cat": category, "lu": date.today().isoformat()},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (s:CareerSkill {id: $sid}) CREATE (u)-[:HAS_CAREER_SKILL]->(s)",
+        {"uid": user_id, "sid": sid},
+    )
+    return sid
+
+
+def get_career_skills(user_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAS_CAREER_SKILL]->(s:CareerSkill) "
+        "RETURN s.id, s.name, s.level, s.category, s.last_used "
+        "ORDER BY s.level DESC, s.name ASC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "level": r[2], "category": r[3], "last_used": r[4]} for r in rows]
+
+
+def update_career_skill_level(skill_id: str, level: int) -> None:
+    conn = get_connection()
+    from datetime import date
+    conn.execute(
+        "MATCH (s:CareerSkill {id: $id}) SET s.level = $level, s.last_used = $lu",
+        {"id": skill_id, "level": level, "lu": date.today().isoformat()},
+    )
+
+
+def add_achievement(
+    user_id: str, title: str, description: str = "", impact: str = "", skills_used: str = ""
+) -> str:
+    conn = get_connection()
+    from datetime import date
+    aid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Achievement {id: $id, title: $title, description: $desc, "
+        "date: $date, impact: $impact, skills_used: $skills})",
+        {"id": aid, "title": title, "desc": description,
+         "date": date.today().isoformat(), "impact": impact, "skills": skills_used},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (a:Achievement {id: $aid}) CREATE (u)-[:HAS_ACHIEVEMENT]->(a)",
+        {"uid": user_id, "aid": aid},
+    )
+    return aid
+
+
+def get_achievements(user_id: str, limit: int = 20) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:HAS_ACHIEVEMENT]->(a:Achievement) "
+        f"RETURN a.id, a.title, a.description, a.date, a.impact, a.skills_used "
+        f"ORDER BY a.date DESC LIMIT {limit}",
+        {"uid": user_id})
+    return [{"id": r[0], "title": r[1], "description": r[2],
+             "date": r[3], "impact": r[4], "skills_used": r[5]} for r in rows]
+
+
+# --- Subscriptions ---
+
+def add_subscription(
+    user_id: str, name: str, amount: float, currency: str = "UAH",
+    billing_cycle: str = "monthly", category: str = "entertainment",
+    next_billing: str = "",
+) -> str:
+    conn = get_connection()
+    sid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Subscription {id: $id, name: $name, amount: $amount, currency: $cur, "
+        "billing_cycle: $cycle, category: $cat, next_billing: $nb, is_active: true})",
+        {"id": sid, "name": name, "amount": amount, "cur": currency,
+         "cycle": billing_cycle, "cat": category, "nb": next_billing},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (s:Subscription {id: $sid}) CREATE (u)-[:HAS_SUBSCRIPTION]->(s)",
+        {"uid": user_id, "sid": sid},
+    )
+    return sid
+
+
+def get_subscriptions(user_id: str, active_only: bool = True) -> list[dict]:
+    conn = get_connection()
+    where = "WHERE s.is_active = true" if active_only else ""
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:HAS_SUBSCRIPTION]->(s:Subscription) {where} "
+        f"RETURN s.id, s.name, s.amount, s.currency, s.billing_cycle, s.category, s.next_billing, s.is_active "
+        f"ORDER BY s.amount DESC",
+        {"uid": user_id})
+    return [{"id": r[0], "name": r[1], "amount": r[2], "currency": r[3],
+             "billing_cycle": r[4], "category": r[5], "next_billing": r[6], "is_active": r[7]}
+            for r in rows]
+
+
+def deactivate_subscription(sub_id: str) -> None:
+    conn = get_connection()
+    conn.execute("MATCH (s:Subscription {id: $id}) SET s.is_active = false", {"id": sub_id})

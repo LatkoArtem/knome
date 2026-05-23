@@ -2,7 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   MessageCircle, LayoutDashboard, BookOpen, Wallet, Heart,
-  Dumbbell, CheckSquare, Settings, LogOut, Zap
+  Dumbbell, CheckSquare, NotebookPen, Users, Briefcase,
+  Settings, LogOut, Zap
 } from 'lucide-react'
 import { useStore } from '../store'
 
@@ -19,8 +20,11 @@ export default function Sidebar() {
     { to: '/learning',     label: t('nav.learning'),     Icon: BookOpen        },
     { to: '/finance',      label: t('nav.finance'),      Icon: Wallet          },
     { to: '/health',       label: t('nav.health'),       Icon: Heart           },
-    { to: '/workout',      label: t('nav.workout'),      Icon: Dumbbell        },
-    { to: '/productivity', label: t('nav.productivity'), Icon: CheckSquare     },
+    { to: '/workout',       label: t('nav.workout'),       Icon: Dumbbell    },
+    { to: '/productivity',  label: t('nav.productivity'),  Icon: CheckSquare },
+    { to: '/reflection',    label: t('nav.reflection'),    Icon: NotebookPen },
+    { to: '/relationships', label: t('nav.relationships'), Icon: Users       },
+    { to: '/career',        label: t('nav.career'),        Icon: Briefcase   },
   ]
 
   const initials    = (userName || userEmail || 'U')[0].toUpperCase()

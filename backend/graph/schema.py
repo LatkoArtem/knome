@@ -310,3 +310,108 @@ def init_schema() -> None:
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_PROJECT (FROM User TO Project)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS TASK_IN_PROJECT (FROM Task TO Project)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS DID_POMODORO (FROM User TO PomodoroSession)")
+
+    # --- Reflection nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS JournalEntry (
+            id STRING,
+            date STRING,
+            text STRING,
+            mood INT64,
+            energy INT64,
+            tags STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS GratitudeEntry (
+            id STRING,
+            date STRING,
+            item1 STRING,
+            item2 STRING,
+            item3 STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS WeeklyReview (
+            id STRING,
+            week STRING,
+            wins STRING,
+            challenges STRING,
+            focus STRING,
+            ai_summary STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # --- Relationships nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Contact (
+            id STRING,
+            name STRING,
+            relationship_type STRING,
+            birthday STRING,
+            notes STRING,
+            tags STRING,
+            created_at STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # --- Career nodes ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS CareerSkill (
+            id STRING,
+            name STRING,
+            level INT64,
+            category STRING,
+            last_used STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Achievement (
+            id STRING,
+            title STRING,
+            description STRING,
+            date STRING,
+            impact STRING,
+            skills_used STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # --- Finance subscriptions ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Subscription (
+            id STRING,
+            name STRING,
+            amount DOUBLE,
+            currency STRING,
+            billing_cycle STRING,
+            category STRING,
+            next_billing STRING,
+            is_active BOOLEAN,
+            PRIMARY KEY (id)
+        )
+    """)
+
+    # Reflection edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS WROTE (FROM User TO JournalEntry)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS GRATEFUL (FROM User TO GratitudeEntry)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS REVIEWED (FROM User TO WeeklyReview)")
+
+    # Relationships edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS KNOWS (FROM User TO Contact)")
+
+    # Career edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_CAREER_SKILL (FROM User TO CareerSkill)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_ACHIEVEMENT (FROM User TO Achievement)")
+
+    # Finance expansion edges
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_SUBSCRIPTION (FROM User TO Subscription)")
