@@ -1,34 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, X, Wallet, Heart, BookOpen } from 'lucide-react'
+import { Plus, X, Wallet, Heart, BookOpen, Dumbbell, CheckSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
-
-const API = 'http://localhost:8000/api'
-
-const ACTIONS = [
-  {
-    label: 'Витрата',
-    Icon: Wallet,
-    color: 'bg-emerald-600 hover:bg-emerald-500',
-    ring: 'ring-emerald-500/30',
-    action: 'finance',
-  },
-  {
-    label: 'Check-in',
-    Icon: Heart,
-    color: 'bg-rose-600 hover:bg-rose-500',
-    ring: 'ring-rose-500/30',
-    action: 'health',
-  },
-  {
-    label: 'Сесія',
-    Icon: BookOpen,
-    color: 'bg-indigo-600 hover:bg-indigo-500',
-    ring: 'ring-indigo-500/30',
-    action: 'learning',
-  },
-]
 
 export default function QuickAdd() {
   const { t } = useTranslation()
@@ -37,9 +11,11 @@ export default function QuickAdd() {
   const location = useLocation()
 
   const ACTIONS = [
-    { label: t('quickadd.expense'), Icon: Wallet,   color: 'bg-emerald-600 hover:bg-emerald-500', ring: 'ring-emerald-500/30', action: 'finance' },
-    { label: t('quickadd.checkin'), Icon: Heart,    color: 'bg-rose-600 hover:bg-rose-500',       ring: 'ring-rose-500/30',    action: 'health' },
-    { label: t('quickadd.session'), Icon: BookOpen, color: 'bg-indigo-600 hover:bg-indigo-500',   ring: 'ring-indigo-500/30',  action: 'learning' },
+    { label: t('quickadd.expense'), Icon: Wallet,      color: 'bg-emerald-600 hover:bg-emerald-500', ring: 'ring-emerald-500/30', action: 'finance'      },
+    { label: t('quickadd.checkin'), Icon: Heart,       color: 'bg-rose-600 hover:bg-rose-500',       ring: 'ring-rose-500/30',    action: 'health'       },
+    { label: t('quickadd.session'), Icon: BookOpen,    color: 'bg-indigo-600 hover:bg-indigo-500',   ring: 'ring-indigo-500/30',  action: 'learning'     },
+    { label: t('quickadd.workout'), Icon: Dumbbell,    color: 'bg-blue-600 hover:bg-blue-500',       ring: 'ring-blue-500/30',    action: 'workout'      },
+    { label: t('quickadd.task'),    Icon: CheckSquare, color: 'bg-violet-600 hover:bg-violet-500',   ring: 'ring-violet-500/30',  action: 'productivity' },
   ]
 
   const hidden = ['/login', '/onboarding'].includes(location.pathname)

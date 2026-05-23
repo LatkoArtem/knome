@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   MessageCircle, LayoutDashboard, BookOpen, Wallet, Heart,
-  Settings, LogOut, Zap
+  Dumbbell, CheckSquare, Settings, LogOut, Zap
 } from 'lucide-react'
 import { useStore } from '../store'
 
@@ -14,11 +14,13 @@ export default function Sidebar() {
   const navigate  = useNavigate()
 
   const NAV = [
-    { to: '/chat',      label: t('nav.chat'),     Icon: MessageCircle   },
-    { to: '/dashboard', label: t('nav.dashboard'), Icon: LayoutDashboard },
-    { to: '/learning',  label: t('nav.learning'),  Icon: BookOpen        },
-    { to: '/finance',   label: t('nav.finance'),   Icon: Wallet          },
-    { to: '/health',    label: t('nav.health'),    Icon: Heart           },
+    { to: '/chat',         label: t('nav.chat'),         Icon: MessageCircle   },
+    { to: '/dashboard',    label: t('nav.dashboard'),    Icon: LayoutDashboard },
+    { to: '/learning',     label: t('nav.learning'),     Icon: BookOpen        },
+    { to: '/finance',      label: t('nav.finance'),      Icon: Wallet          },
+    { to: '/health',       label: t('nav.health'),       Icon: Heart           },
+    { to: '/workout',      label: t('nav.workout'),      Icon: Dumbbell        },
+    { to: '/productivity', label: t('nav.productivity'), Icon: CheckSquare     },
   ]
 
   const initials    = (userName || userEmail || 'U')[0].toUpperCase()

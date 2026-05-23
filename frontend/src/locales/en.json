@@ -5,6 +5,8 @@
     "learning": "Learning",
     "finance": "Finance",
     "health": "Health",
+    "workout": "Workout",
+    "productivity": "Tasks",
     "settings": "Settings"
   },
 
@@ -209,10 +211,63 @@
     "version": "Knome v0.5 · Made with ❤️"
   },
 
+  "workout": {
+    "title": "Workout",
+    "subtitle": "Programs and exercise tracking",
+    "btn_log": "Log",
+    "btn_cancel": "Cancel",
+    "form_title": "New workout",
+    "duration_label": "⏱ Duration",
+    "exercises_label": "💪 Exercises (one per line)",
+    "exercises_placeholder": "Bench press 80kg 4×5\nSquat 100kg 3×8\nPull-ups 3×10",
+    "notes_label": "📝 Notes",
+    "notes_placeholder": "How did it go?...",
+    "rating_label": "⭐ Rating",
+    "btn_save": "Save workout",
+    "btn_saving": "Saving...",
+    "stats_title": "Weekly stats",
+    "stat_week": "Workouts",
+    "stat_minutes": "Minutes",
+    "stat_total": "Total",
+    "last_session": "Last:",
+    "program_title": "Active program",
+    "program_empty_title": "No program",
+    "program_empty_sub": "Write in chat «create a workout plan»",
+    "history_title": "Recent workouts",
+    "history_empty_title": "No workouts yet",
+    "history_empty_sub": "Tap «Log» or write in chat «finished workout»"
+  },
+
+  "productivity": {
+    "title": "Productivity",
+    "subtitle": "Tasks and focus sessions",
+    "btn_add": "Task",
+    "btn_cancel": "Cancel",
+    "form_title": "New task",
+    "task_placeholder": "What needs to be done?...",
+    "btn_save": "+ Add task",
+    "btn_saving": "Saving...",
+    "stats_today": "Today",
+    "stat_active": "Active",
+    "stat_done": "Done",
+    "stat_focus": "Focus (min)",
+    "timer_work": "Focus",
+    "timer_break": "Break",
+    "tasks_title": "Active tasks",
+    "tasks_empty_title": "No tasks",
+    "tasks_empty_sub": "Tap «+ Task» or write in chat «task: name»",
+    "priority_critical": "Critical",
+    "priority_high": "High",
+    "priority_medium": "Medium",
+    "priority_low": "Low"
+  },
+
   "quickadd": {
     "expense": "Expense",
     "checkin": "Check-in",
-    "session": "Session"
+    "session": "Session",
+    "workout": "Workout",
+    "task": "Task"
   },
 
   "onboarding": {

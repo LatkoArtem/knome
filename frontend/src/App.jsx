@@ -12,6 +12,8 @@ import Dashboard from './pages/Dashboard'
 import Learning from './pages/Learning'
 import Finance from './pages/Finance'
 import Health from './pages/Health'
+import Workout from './pages/Workout'
+import Productivity from './pages/Productivity'
 import Settings from './pages/Settings'
 
 function PrivateRoute({ children }) {
@@ -76,8 +78,10 @@ export default function App() {
               <Route path="/dashboard"  element={<PrivateRoute><Dashboard /></PrivateRoute>} />
               <Route path="/learning"   element={<PrivateRoute><Learning /></PrivateRoute>} />
               <Route path="/finance"    element={<PrivateRoute><Finance /></PrivateRoute>} />
-              <Route path="/health"     element={<PrivateRoute><Health /></PrivateRoute>} />
-              <Route path="/settings"   element={<PrivateRoute><Settings /></PrivateRoute>} />
+              <Route path="/health"       element={<PrivateRoute><Health /></PrivateRoute>} />
+              <Route path="/workout"     element={<PrivateRoute><Workout /></PrivateRoute>} />
+              <Route path="/productivity" element={<PrivateRoute><Productivity /></PrivateRoute>} />
+              <Route path="/settings"    element={<PrivateRoute><Settings /></PrivateRoute>} />
               <Route path="/"           element={<Navigate to="/chat" replace />} />
             </Routes>
           </Shell>

@@ -5,6 +5,8 @@
     "learning": "Навчання",
     "finance": "Фінанси",
     "health": "Здоров'я",
+    "workout": "Тренування",
+    "productivity": "Задачі",
     "settings": "Налаштування"
   },
 
@@ -209,10 +211,63 @@
     "version": "Knome v0.5 · Зроблено з ❤️"
   },
 
+  "workout": {
+    "title": "Тренування",
+    "subtitle": "Програми і трекінг вправ",
+    "btn_log": "Записати",
+    "btn_cancel": "Скасувати",
+    "form_title": "Нове тренування",
+    "duration_label": "⏱ Тривалість",
+    "exercises_label": "💪 Вправи (по одній на рядок)",
+    "exercises_placeholder": "Жим штанги 80кг 4×5\nПрисідання 100кг 3×8\nПідтягування 3×10",
+    "notes_label": "📝 Нотатки",
+    "notes_placeholder": "Як пройшло тренування?...",
+    "rating_label": "⭐ Оцінка",
+    "btn_save": "Зберегти тренування",
+    "btn_saving": "Зберігаємо...",
+    "stats_title": "Тижнева статистика",
+    "stat_week": "Тренувань",
+    "stat_minutes": "Хвилин",
+    "stat_total": "Всього",
+    "last_session": "Останнє:",
+    "program_title": "Активна програма",
+    "program_empty_title": "Програми немає",
+    "program_empty_sub": "Напиши в чат «склади програму тренувань»",
+    "history_title": "Останні тренування",
+    "history_empty_title": "Тренувань ще немає",
+    "history_empty_sub": "Натисни «Записати» або напиши в чат «потренувався»"
+  },
+
+  "productivity": {
+    "title": "Продуктивність",
+    "subtitle": "Задачі і фокус-сесії",
+    "btn_add": "Задача",
+    "btn_cancel": "Скасувати",
+    "form_title": "Нова задача",
+    "task_placeholder": "Що треба зробити?...",
+    "btn_save": "+ Додати задачу",
+    "btn_saving": "Зберігаємо...",
+    "stats_today": "Сьогодні",
+    "stat_active": "Активні",
+    "stat_done": "Виконані",
+    "stat_focus": "Фокус (хв)",
+    "timer_work": "Фокус",
+    "timer_break": "Перерва",
+    "tasks_title": "Активні задачі",
+    "tasks_empty_title": "Задач немає",
+    "tasks_empty_sub": "Натисни «+ Задача» або напиши в чат «задача: назва»",
+    "priority_critical": "Критично",
+    "priority_high": "Високий",
+    "priority_medium": "Середній",
+    "priority_low": "Низький"
+  },
+
   "quickadd": {
     "expense": "Витрата",
     "checkin": "Check-in",
-    "session": "Сесія"
+    "session": "Сесія",
+    "workout": "Тренування",
+    "task": "Задача"
   },
 
   "onboarding": {
