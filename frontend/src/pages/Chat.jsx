@@ -1,10 +1,42 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Send, Languages } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import { useChat } from '../hooks/useChat'
 import { IllustrationChat } from '../components/Illustrations'
+
+function isSameDay(ts1, ts2) {
+  if (!ts1 || !ts2) return false
+  return new Date(ts1).toDateString() === new Date(ts2).toDateString()
+}
+
+function formatDateLabel(ts, lang) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const today = new Date()
+  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString())
+    return lang === 'ua' ? 'Сьогодні' : 'Today'
+  if (d.toDateString() === yesterday.toDateString())
+    return lang === 'ua' ? 'Вчора' : 'Yesterday'
+  return d.toLocaleDateString(lang === 'ua' ? 'uk-UA' : 'en-GB', {
+    day: 'numeric', month: 'long',
+    ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
+  })
+}
+
+function DateSeparator({ ts, lang }) {
+  return (
+    <div className="flex items-center gap-3 my-1 select-none">
+      <div className="flex-1 h-px bg-white/[0.04]" />
+      <span className="text-[10px] text-zinc-600 font-medium px-2.5 py-0.5 rounded-full bg-zinc-900/60 border border-white/[0.05]">
+        {formatDateLabel(ts, lang)}
+      </span>
+      <div className="flex-1 h-px bg-white/[0.04]" />
+    </div>
+  )
+}
 
 const MD_COMPONENTS = {
   p:      ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
@@ -167,7 +199,14 @@ export default function Chat() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
           {messages.length === 0 && !streamingContent && !isLoading && <EmptyState onSuggestion={handleSend} />}
-          {messages.map((msg, i) => <Message key={i} msg={msg} />)}
+          {messages.map((msg, i) => (
+            <Fragment key={i}>
+              {(i === 0 || !isSameDay(messages[i - 1].ts, msg.ts)) && msg.ts && (
+                <DateSeparator ts={msg.ts} lang={language} />
+              )}
+              <Message msg={msg} />
+            </Fragment>
+          ))}
 
           {streamingContent && (
             <div className="flex gap-3 animate-fade-in">
