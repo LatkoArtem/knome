@@ -8,28 +8,6 @@ const API = 'http://localhost:8000/api'
 const PRIORITY_COLORS = { 5: 'text-red-400', 4: 'text-orange-400', 3: 'text-yellow-500', 2: 'text-blue-400', 1: 'text-zinc-500' }
 const PRIORITY_BG     = { 5: 'bg-red-500/8 border-red-500/20', 4: 'bg-orange-500/8 border-orange-500/20', 3: 'bg-yellow-500/8 border-yellow-500/20', 2: 'bg-blue-500/8 border-blue-500/20', 1: 'bg-zinc-800 border-zinc-700' }
 
-function playBeep() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = 880
-    osc.type = 'sine'
-    gain.gain.setValueAtTime(0.4, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 1.2)
-  } catch (_) {}
-}
-
-function notifyBrowser(message) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('Knome', { body: message, icon: '/favicon.ico' })
-  }
-}
-
 /* ─── Pomodoro timer ────────────────────────────────────────── */
 function PomodoroTimer({ onComplete, tasks = [], selectedTaskId, onSelectTask }) {
   const { t } = useTranslation()
@@ -48,8 +26,6 @@ function PomodoroTimer({ onComplete, tasks = [], selectedTaskId, onSelectTask })
             clearInterval(intervalRef.current)
             setRunning(false)
             const isFocus = mode === 'work'
-            playBeep()
-            notifyBrowser(isFocus ? 'Фокус-сесія завершена! Час відпочити.' : 'Перерва закінчилась. Час фокусуватись!')
             onComplete(isFocus ? 25 : 5, isFocus)
             return 0
           }
@@ -70,12 +46,7 @@ function PomodoroTimer({ onComplete, tasks = [], selectedTaskId, onSelectTask })
     setSeconds(DURATIONS[m])
   }
 
-  const handlePlay = () => {
-    if (!running && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-    setRunning(v => !v)
-  }
+  const handlePlay = () => setRunning(v => !v)
 
   const total  = DURATIONS[mode]
   const pct    = ((total - seconds) / total) * 100
