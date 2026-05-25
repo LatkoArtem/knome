@@ -12,20 +12,6 @@ from graph.queries import (
     get_recent_transactions,
     get_all_users,
 )
-from llm.client import llm_respond
-
-_MORNING_SYSTEM = """You are Knome sending a proactive morning message to the user.
-Keep it warm, brief (1 sentence), and in Ukrainian.
-Mention their name if provided. Prompt them to log today's check-in."""
-
-_WEEKLY_SYSTEM = """You are Knome sending a Sunday weekly recap to the user.
-Keep it encouraging, 2-3 sentences, in Ukrainian.
-Summarize what was good this week based on the context provided."""
-
-
-async def _llm_or(system: str, prompt: str, fallback: str) -> str:
-    result = await llm_respond(system, prompt)
-    return result if result else fallback
 
 
 # ── Individual rule functions ────────────────────────────────────────────────
@@ -39,39 +25,31 @@ async def rule_morning_checkin(user_id: str) -> Optional[str]:
 
     ctx = get_user_context(user_id)
     name = ctx.get("user", {}).get("name", "")
-    greeting = f"Привіт{', ' + name if name else ''}! "
-
-    return await _llm_or(
-        _MORNING_SYSTEM,
-        f"User name: {name}. Morning nudge for daily check-in.",
-        greeting + "Як пройшла ніч? Запиши сон і настрій 😊",
-    )
+    name_part = f", {name}" if name else ""
+    return f"Доброго ранку{name_part}! ☀️ Як пройшла ніч? Запиши сон і настрій — це займе 10 секунд."
 
 
 async def rule_learning_gap(user_id: str) -> Optional[str]:
     """Pattern: 3+ days without any learning session."""
     sessions = get_learning_sessions(user_id, limit=1)
     if not sessions:
-        gap_days = 999
-    else:
-        last_date = sessions[0].get("date", "")[:10]
-        try:
-            last = date.fromisoformat(last_date)
-            gap_days = (date.today() - last).days
-        except ValueError:
-            gap_days = 999
+        return None  # new user — hasn't started yet, no gap to report
+
+    last_date = sessions[0].get("date", "")[:10]
+    try:
+        last = date.fromisoformat(last_date)
+        gap_days = (date.today() - last).days
+    except ValueError:
+        return None
 
     if gap_days < 3:
         return None
 
     ctx = get_user_context(user_id)
     name = ctx.get("user", {}).get("name", "")
-    fallback = f"{'Привіт' + (', ' + name) if name else 'Привіт'}! Вже {gap_days} дні без навчання. Навіть 10 хвилин сьогодні підтримають прогрес 📚"
-    return await _llm_or(
-        "You are Knome. The user hasn't studied in several days. Send a warm, brief (1 sentence) motivation in Ukrainian. Use their name if provided.",
-        f"User: {name}. Days without learning: {gap_days}.",
-        fallback,
-    )
+    name_part = f", {name}" if name else ""
+    day_word = "день" if gap_days == 1 else "дні" if gap_days < 5 else "днів"
+    return f"Привіт{name_part}! Вже {gap_days} {day_word} без навчання — навіть 10 хвилин сьогодні підтримають прогрес 📚"
 
 
 async def rule_low_mood_streak(user_id: str) -> Optional[str]:
@@ -85,12 +63,8 @@ async def rule_low_mood_streak(user_id: str) -> Optional[str]:
     ctx = get_user_context(user_id)
     name = ctx.get("user", {}).get("name", "")
     avg = round(sum(c["mood"] for c in checkins) / len(checkins), 1)
-    fallback = f"{'Привіт' + (', ' + name) if name else 'Привіт'}, помітив що настрій останніми днями {avg}/10. Як справи? Може варто трохи відпочити? 💙"
-    return await _llm_or(
-        "You are Knome. The user had 4 consecutive low mood check-ins. Send a caring, brief (1-2 sentences) message in Ukrainian. Don't be dramatic.",
-        f"User: {name}. Last 4 moods: {[c['mood'] for c in checkins]}. Avg: {avg}/10.",
-        fallback,
-    )
+    name_part = f", {name}" if name else ""
+    return f"Привіт{name_part} 💙 Помітив, що настрій останніми днями {avg}/10. Як справи? Може варто трохи відпочити або розповісти що турбує?"
 
 
 async def rule_spending_anomaly(user_id: str) -> Optional[str]:
@@ -117,12 +91,8 @@ async def rule_spending_anomaly(user_id: str) -> Optional[str]:
     currency = txs[0]["currency"] if txs else "UAH"
     ctx = get_user_context(user_id)
     name = ctx.get("user", {}).get("name", "")
-    fallback = f"{'Привіт' + (', ' + name) if name else 'Привіт'}, сьогодні витрачено {today_total:.0f} {currency} — це вдвічі більше звичайного. Все гаразд? 💰"
-    return await _llm_or(
-        "You are Knome. The user spent 2x their daily average today. Send a brief, non-judgmental check-in in Ukrainian.",
-        f"User: {name}. Today: {today_total:.0f} {currency}. Daily avg: {daily_avg:.0f} {currency}.",
-        fallback,
-    )
+    name_part = f", {name}" if name else ""
+    return f"Привіт{name_part} 💰 Сьогодні витрачено {today_total:.0f} {currency} — це вдвічі більше за звичайний день ({daily_avg:.0f} {currency}). Все гаразд?"
 
 
 async def rule_weekly_report(user_id: str) -> Optional[str]:
@@ -134,12 +104,8 @@ async def rule_weekly_report(user_id: str) -> Optional[str]:
     from llm.context import format_context
     ctx_str = format_context(ctx)
     name = ctx.get("user", {}).get("name", "")
-    fallback = f"Привіт{', ' + name if name else ''}! Тижневий підсумок готовий. Відкрий дашборд щоб побачити свій прогрес 📊"
-    return await _llm_or(
-        _WEEKLY_SYSTEM,
-        f"User data for the week:\n{ctx_str}",
-        fallback,
-    )
+    name_part = f", {name}" if name else ""
+    return f"Привіт{name_part}! 📊 Тижень завершено. Відкрий дашборд щоб побачити свій прогрес — і не забудь про тижневий огляд!"
 
 
 async def rule_burnout_risk(user_id: str) -> Optional[str]:
@@ -164,17 +130,10 @@ async def rule_burnout_risk(user_id: str) -> Optional[str]:
     ctx = get_user_context(user_id)
     name = ctx.get("user", {}).get("name", "")
     top_factor = result.factors[0] if result.factors else ""
-    fallback = (
-        f"{'Привіт' + (', ' + name) if name else 'Привіт'}, "
-        f"помітив ознаки перевтоми (ризик {result.score}/100). "
-        f"Може варто зробити паузу? 🌿"
-    )
-    return await _llm_or(
-        "You are Knome. The user shows high burnout risk. Send a caring, brief (2 sentences) message in Ukrainian. "
-        "Mention that you noticed signs of fatigue. Don't be dramatic.",
-        f"User: {name}. Burnout score: {result.score}/100. Top factor: {top_factor}. "
-        f"Recommendations: {', '.join(result.recommendations[:2])}.",
-        fallback,
+    name_part = f", {name}" if name else ""
+    return (
+        f"Привіт{name_part} 🌿 Помітив ознаки перевтоми (ризик {result.score}/100). "
+        f"Може варто зробити паузу і відновитися? Навіть один вільний вечір допоможе."
     )
 
 
