@@ -340,7 +340,10 @@
     "weekly_empty_sub": "Підіб'ємо підсумки тижня",
     "stat_journal": "Записів",
     "stat_gratitude": "Вдячностей",
-    "stat_reviews": "Оглядів"
+    "stat_reviews": "Оглядів",
+    "label_wins": "Перемоги",
+    "label_challenges": "Виклики",
+    "label_focus": "Фокус"
   },
 
   "relationships": {

@@ -88,8 +88,8 @@ function JournalTab({ userId }) {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-2xs text-zinc-500 tabular-nums">{e.date}</span>
                 <div className="flex gap-3 text-2xs text-zinc-600">
-                  <span>Настрій {e.mood}/10</span>
-                  <span>Енергія {e.energy}/10</span>
+                  <span>{t('reflection.journal_mood')} {e.mood}/10</span>
+                  <span>{t('reflection.journal_energy')} {e.energy}/10</span>
                 </div>
               </div>
               <p className="text-sm text-zinc-300 leading-relaxed">{e.text}</p>
@@ -256,9 +256,9 @@ function WeeklyTab({ userId }) {
           {reviews.map((r, i) => (
             <div key={r.id || i} className="card p-4">
               <p className="text-2xs text-zinc-500 mb-2 font-mono">{r.week}</p>
-              {r.wins && <p className="text-sm text-zinc-300 mb-1"><span className="text-emerald-400 text-2xs mr-2">Перемоги</span>{r.wins}</p>}
-              {r.challenges && <p className="text-sm text-zinc-400 mb-1"><span className="text-amber-400 text-2xs mr-2">Виклики</span>{r.challenges}</p>}
-              {r.focus && <p className="text-sm text-violet-300"><span className="text-violet-400 text-2xs mr-2">Фокус</span>{r.focus}</p>}
+              {r.wins && <p className="text-sm text-zinc-300 mb-1"><span className="text-emerald-400 text-2xs mr-2">{t('reflection.label_wins')}</span>{r.wins}</p>}
+              {r.challenges && <p className="text-sm text-zinc-400 mb-1"><span className="text-amber-400 text-2xs mr-2">{t('reflection.label_challenges')}</span>{r.challenges}</p>}
+              {r.focus && <p className="text-sm text-violet-300"><span className="text-violet-400 text-2xs mr-2">{t('reflection.label_focus')}</span>{r.focus}</p>}
             </div>
           ))}
         </div>
@@ -304,7 +304,7 @@ export default function Reflection() {
         <div className="grid grid-cols-3 gap-3">
           <StatTile label={t('reflection.stat_journal')}   value={summary?.journal_count}    color="text-amber-400" />
           <StatTile label={t('reflection.stat_gratitude')} value={summary?.gratitude_streak} color="text-rose-400"  />
-          <StatTile label={t('reflection.stat_reviews')}   value={summary?.last_review ? 1 : 0} color="text-violet-400" />
+          <StatTile label={t('reflection.stat_reviews')}   value={summary?.reviews_count ?? 0}  color="text-violet-400" />
         </div>
       </div>
 

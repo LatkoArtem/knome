@@ -340,7 +340,10 @@
     "weekly_empty_sub": "Let's wrap up the week",
     "stat_journal": "Entries",
     "stat_gratitude": "Gratitudes",
-    "stat_reviews": "Reviews"
+    "stat_reviews": "Reviews",
+    "label_wins": "Wins",
+    "label_challenges": "Challenges",
+    "label_focus": "Focus"
   },
 
   "relationships": {

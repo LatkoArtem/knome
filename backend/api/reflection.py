@@ -88,6 +88,7 @@ def get_summary(user_id: str):
     return {
         "journal_count": len(entries),
         "gratitude_streak": len(gratitude),
+        "reviews_count": len(reviews),
         "last_review": reviews[0]["week"] if reviews else None,
         "recent_entries": entries[:3],
     }
