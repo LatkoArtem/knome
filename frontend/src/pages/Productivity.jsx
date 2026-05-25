@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { CheckSquare, Square, Plus, X, Play, Pause, RotateCcw } from 'lucide-react'
+import { CheckSquare, Square, Plus, X, Play, Pause, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
@@ -8,10 +8,32 @@ const API = 'http://localhost:8000/api'
 const PRIORITY_COLORS = { 5: 'text-red-400', 4: 'text-orange-400', 3: 'text-yellow-500', 2: 'text-blue-400', 1: 'text-zinc-500' }
 const PRIORITY_BG     = { 5: 'bg-red-500/8 border-red-500/20', 4: 'bg-orange-500/8 border-orange-500/20', 3: 'bg-yellow-500/8 border-yellow-500/20', 2: 'bg-blue-500/8 border-blue-500/20', 1: 'bg-zinc-800 border-zinc-700' }
 
-/* Pomodoro countdown timer */
-function PomodoroTimer({ onComplete }) {
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 880
+    osc.type = 'sine'
+    gain.gain.setValueAtTime(0.4, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 1.2)
+  } catch (_) {}
+}
+
+function notifyBrowser(message) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('Knome', { body: message, icon: '/favicon.ico' })
+  }
+}
+
+/* ─── Pomodoro timer ────────────────────────────────────────── */
+function PomodoroTimer({ onComplete, tasks = [], selectedTaskId, onSelectTask }) {
   const { t } = useTranslation()
-  const [mode, setMode]       = useState('work')   // 'work' | 'break'
+  const [mode, setMode]       = useState('work')
   const [seconds, setSeconds] = useState(25 * 60)
   const [running, setRunning] = useState(false)
   const intervalRef           = useRef(null)
@@ -26,6 +48,8 @@ function PomodoroTimer({ onComplete }) {
             clearInterval(intervalRef.current)
             setRunning(false)
             const isFocus = mode === 'work'
+            playBeep()
+            notifyBrowser(isFocus ? 'Фокус-сесія завершена! Час відпочити.' : 'Перерва закінчилась. Час фокусуватись!')
             onComplete(isFocus ? 25 : 5, isFocus)
             return 0
           }
@@ -46,6 +70,13 @@ function PomodoroTimer({ onComplete }) {
     setSeconds(DURATIONS[m])
   }
 
+  const handlePlay = () => {
+    if (!running && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+    setRunning(v => !v)
+  }
+
   const total  = DURATIONS[mode]
   const pct    = ((total - seconds) / total) * 100
   const circle = 2 * Math.PI * 44
@@ -57,8 +88,8 @@ function PomodoroTimer({ onComplete }) {
   return (
     <div className="card p-5 accent-violet text-center">
       {/* Mode tabs */}
-      <div className="flex gap-2 mb-5 justify-center">
-        {(['work', 'break'] ).map(m => (
+      <div className="flex gap-2 mb-4 justify-center">
+        {(['work', 'break']).map(m => (
           <button
             key={m}
             onClick={() => switchMode(m)}
@@ -72,6 +103,20 @@ function PomodoroTimer({ onComplete }) {
           </button>
         ))}
       </div>
+
+      {/* Task selector */}
+      {tasks.length > 0 && (
+        <select
+          value={selectedTaskId}
+          onChange={e => onSelectTask(e.target.value)}
+          className="w-full mb-4 bg-zinc-800 border border-zinc-700 text-zinc-400 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-violet-500 truncate"
+        >
+          <option value="">{t('productivity.timer_no_task')}</option>
+          {tasks.map(task => (
+            <option key={task.id} value={task.id}>{task.title}</option>
+          ))}
+        </select>
+      )}
 
       {/* Circular progress ring */}
       <div className="relative w-32 h-32 mx-auto mb-4">
@@ -97,7 +142,7 @@ function PomodoroTimer({ onComplete }) {
           <RotateCcw className="w-4 h-4" />
         </button>
         <button
-          onClick={() => setRunning(v => !v)}
+          onClick={handlePlay}
           style={{ background: running ? '#3f3f46' : color }}
           className="w-12 h-12 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-opacity"
         >
@@ -114,14 +159,18 @@ export default function Productivity() {
   const { t } = useTranslation()
   const userId = useStore((s) => s.userId)
 
-  const [summary, setSummary] = useState(null)
-  const [tasks, setTasks]     = useState([])
-  const [showForm, setShowForm] = useState(false)
-  const [title, setTitle]     = useState('')
-  const [priority, setPriority] = useState(3)
-  const [dueDate, setDueDate] = useState('')
-  const [saving, setSaving]   = useState(false)
-  const [completing, setCompleting] = useState(null)
+  const [summary, setSummary]             = useState(null)
+  const [tasks, setTasks]                 = useState([])
+  const [doneTasks, setDoneTasks]         = useState([])
+  const [showForm, setShowForm]           = useState(false)
+  const [showDone, setShowDone]           = useState(false)
+  const [title, setTitle]                 = useState('')
+  const [priority, setPriority]           = useState(3)
+  const [dueDate, setDueDate]             = useState('')
+  const [saving, setSaving]               = useState(false)
+  const [completing, setCompleting]       = useState(null)
+  const [deleting, setDeleting]           = useState(null)
+  const [selectedTaskId, setSelectedTaskId] = useState('')
 
   const PRIORITY_LABELS = {
     5: t('productivity.priority_critical'),
@@ -137,6 +186,9 @@ export default function Productivity() {
     fetch(`${API}/productivity/tasks/${userId}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setTasks(d?.tasks || [])).catch(() => {})
+    fetch(`${API}/productivity/tasks/${userId}?status=done`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setDoneTasks(d?.tasks || [])).catch(() => {})
   }
   useEffect(() => { load() }, [userId])
 
@@ -164,6 +216,19 @@ export default function Productivity() {
       body: JSON.stringify({ status: 'done' }),
     }).catch(() => {})
     setCompleting(null)
+    if (selectedTaskId === taskId) setSelectedTaskId('')
+    load()
+  }
+
+  const deleteTask = async (taskId) => {
+    setDeleting(taskId)
+    await fetch(`${API}/productivity/task/${taskId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' }),
+    }).catch(() => {})
+    setDeleting(null)
+    if (selectedTaskId === taskId) setSelectedTaskId('')
     load()
   }
 
@@ -171,7 +236,7 @@ export default function Productivity() {
     await fetch(`${API}/productivity/pomodoro/${userId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ duration, completed }),
+      body: JSON.stringify({ duration, completed, task_id: selectedTaskId }),
     }).catch(() => {})
     load()
   }
@@ -202,9 +267,9 @@ export default function Productivity() {
           <p className="section-label mb-4">{t('productivity.stats_today')}</p>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: t('productivity.stat_active'), value: summary?.active_tasks,       color: 'text-violet-400' },
-              { label: t('productivity.stat_done'),   value: summary?.done_tasks,         color: 'text-emerald-400' },
-              { label: t('productivity.stat_focus'),  value: summary?.focus_minutes_today, color: 'text-amber-400'  },
+              { label: t('productivity.stat_active'), value: summary?.active_tasks,        color: 'text-violet-400' },
+              { label: t('productivity.stat_done'),   value: summary?.done_tasks,          color: 'text-emerald-400' },
+              { label: t('productivity.stat_focus'),  value: summary?.focus_minutes_today, color: 'text-amber-400' },
             ].map(({ label, value, color }) => (
               <div key={label} className="text-center">
                 <p className={`text-2xl font-bold leading-none ${color}`}>{value ?? '—'}</p>
@@ -215,7 +280,12 @@ export default function Productivity() {
         </div>
 
         {/* Pomodoro */}
-        <PomodoroTimer onComplete={logPomodoro} />
+        <PomodoroTimer
+          onComplete={logPomodoro}
+          tasks={tasks}
+          selectedTaskId={selectedTaskId}
+          onSelectTask={setSelectedTaskId}
+        />
 
         {/* Add task form */}
         {showForm && (
@@ -230,8 +300,6 @@ export default function Productivity() {
                 className="input"
                 autoFocus
               />
-
-              {/* Priority selector */}
               <div className="flex gap-2 flex-wrap">
                 {[2, 3, 4, 5].map(p => (
                   <button
@@ -247,14 +315,12 @@ export default function Productivity() {
                   </button>
                 ))}
               </div>
-
               <input
                 type="date"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
                 className="input text-zinc-400"
               />
-
               <div className="flex gap-2">
                 <button onClick={addTask} disabled={saving || !title.trim()} className="btn-primary flex-1 py-2">
                   {saving ? t('productivity.btn_saving') : t('productivity.btn_save')}
@@ -267,7 +333,7 @@ export default function Productivity() {
           </div>
         )}
 
-        {/* Task list */}
+        {/* Active task list */}
         <div className="card overflow-hidden sm:col-span-2">
           <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between">
             <p className="section-label">{t('productivity.tasks_title')}</p>
@@ -281,7 +347,7 @@ export default function Productivity() {
                   key={task.id || i}
                   className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/20 transition-colors group"
                 >
-                  {/* Checkbox */}
+                  {/* Complete checkbox */}
                   <button
                     onClick={() => completeTask(task.id)}
                     disabled={completing === task.id}
@@ -293,7 +359,10 @@ export default function Productivity() {
                     }
                   </button>
 
-                  <span className="flex-1 text-sm text-zinc-300 min-w-0 truncate">{task.title}</span>
+                  <span className={`flex-1 text-sm min-w-0 truncate ${selectedTaskId === task.id ? 'text-violet-300' : 'text-zinc-300'}`}>
+                    {task.title}
+                    {selectedTaskId === task.id && <span className="ml-1.5 text-2xs text-violet-500">●</span>}
+                  </span>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {task.due_date && (
@@ -302,6 +371,18 @@ export default function Productivity() {
                     <span className={`text-2xs font-semibold px-1.5 py-0.5 rounded border ${PRIORITY_BG[task.priority]} ${PRIORITY_COLORS[task.priority]}`}>
                       {PRIORITY_LABELS[task.priority]}
                     </span>
+                    {/* Delete button */}
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      disabled={deleting === task.id}
+                      className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-all ml-1"
+                      aria-label="Видалити"
+                    >
+                      {deleting === task.id
+                        ? <span className="w-3 h-3 border border-red-500/50 border-t-red-400 rounded-full animate-spin block" />
+                        : <X className="w-3.5 h-3.5" />
+                      }
+                    </button>
                   </div>
                 </li>
               ))}
@@ -314,6 +395,36 @@ export default function Productivity() {
             </div>
           )}
         </div>
+
+        {/* Done tasks (collapsible) */}
+        {doneTasks.length > 0 && (
+          <div className="card overflow-hidden sm:col-span-2">
+            <button
+              onClick={() => setShowDone(v => !v)}
+              className="w-full px-5 py-3 border-b border-white/[0.06] flex items-center justify-between hover:bg-zinc-800/20 transition-colors"
+            >
+              <p className="section-label">{t('productivity.tasks_done_title')}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-2xs text-zinc-600 tabular-nums">{doneTasks.length}</span>
+                {showDone
+                  ? <ChevronUp className="w-3.5 h-3.5 text-zinc-600" />
+                  : <ChevronDown className="w-3.5 h-3.5 text-zinc-600" />
+                }
+              </div>
+            </button>
+            {showDone && (
+              <ul className="divide-y divide-white/[0.04]">
+                {doneTasks.slice(0, 10).map((task, i) => (
+                  <li key={task.id || i} className="flex items-center gap-3 px-5 py-3 opacity-50">
+                    <CheckSquare className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span className="flex-1 text-sm text-zinc-500 line-through min-w-0 truncate">{task.title}</span>
+                    <span className="text-2xs text-zinc-700 tabular-nums hidden sm:block">{task.created_at?.slice(0, 10)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

@@ -298,7 +298,9 @@
     "priority_critical": "Критично",
     "priority_high": "Високий",
     "priority_medium": "Середній",
-    "priority_low": "Низький"
+    "priority_low": "Низький",
+    "tasks_done_title": "Виконані задачі",
+    "timer_no_task": "Без прив'язки до задачі"
   },
 
   "quickadd": {

@@ -298,7 +298,9 @@
     "priority_critical": "Critical",
     "priority_high": "High",
     "priority_medium": "Medium",
-    "priority_low": "Low"
+    "priority_low": "Low",
+    "tasks_done_title": "Done tasks",
+    "timer_no_task": "No specific task"
   },
 
   "quickadd": {
