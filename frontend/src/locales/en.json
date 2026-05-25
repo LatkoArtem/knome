@@ -370,7 +370,17 @@
     "days_until": "in {{days}} days",
     "today": "Today!",
     "stat_total": "Contacts",
-    "stat_birthdays": "Upcoming BDs"
+    "stat_birthdays": "Upcoming BDs",
+    "interaction_log": "Interaction note",
+    "interaction_placeholder": "What did you talk about?",
+    "interaction_btn_save": "Save",
+    "interaction_btn_saving": "Saving...",
+    "interaction_type_call": "Call",
+    "interaction_type_message": "Message",
+    "interaction_type_meeting": "Meeting",
+    "interaction_type_other": "Other",
+    "interactions_empty": "No interactions yet",
+    "last_contact": "Last contact"
   },
 
   "career": {

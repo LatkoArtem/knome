@@ -6,9 +6,15 @@ from graph import queries as q
 from llm.client import llm_respond
 from llm.prompts import RELATIONSHIPS_SYSTEM
 
-_ADD_KW      = {"додати контакт", "новий контакт", "add contact", "познайомився", "познайомилась"}
-_LIST_KW     = {"контакти", "contacts", "список людей", "мої контакти"}
-_BIRTHDAY_KW = {"день народження", "birthday", "іменини", "хто народжується"}
+_ADD_KW         = {"додати контакт", "новий контакт", "add contact", "познайомився", "познайомилась"}
+_LIST_KW        = {"контакти", "contacts", "список людей", "мої контакти"}
+_BIRTHDAY_KW    = {"день народження", "birthday", "іменини", "хто народжується"}
+_INTERACTION_KW = [
+    "розмовляв з", "розмовляла з", "зустрівся з", "зустрілася з",
+    "зателефонував", "зателефонувала", "написав", "написала",
+    "побачився з", "побачилася з", "спілкувався з", "спілкувалася з",
+    "talked to", "met with", "called",
+]
 
 def _nominative(name: str) -> str:
     """Best-effort Ukrainian genitive → nominative conversion for names."""
@@ -38,6 +44,23 @@ def _extract_birthday_person(text: str) -> str | None:
         if m:
             raw = m.group(1).strip()
             return _nominative(raw).title()
+    return None
+
+
+def _extract_interaction_person(text: str, contacts: list[dict]) -> str | None:
+    patterns = [
+        r"(?:розмовляв|розмовляла|зустрівся|зустрілася|спілкувався|спілкувалася|побачився|побачилася)\s+з\s+([А-ЯІЇЄa-яіїє][а-яіїє']+)",
+        r"(?:зателефонував|зателефонувала|написав|написала)\s+([А-ЯІЇЄa-яіїє][а-яіїє']+)",
+        r"(?:talked to|met with|called)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            raw = m.group(1).strip()
+            return _nominative(raw).title()
+    for c in contacts:
+        if c["name"].lower() in text.lower():
+            return c["name"]
     return None
 
 
@@ -91,6 +114,19 @@ async def process(message: str, user_id: str, context: dict) -> tuple[str, list]
             names = ", ".join(f"{c['name']} ({c['days_until']} дн.)" for c in upcoming)
             return f"Найближчі дні народження: {names}.", updates
         return "Найближчих днів народження немає. Але в тебе є день народження друга? Назви ім'я — додам контакт!", updates
+
+    if any(k in low for k in _INTERACTION_KW):
+        person = _extract_interaction_person(message, contacts)
+        if person:
+            existing = next((c for c in contacts if person.lower() in c["name"].lower()), None)
+            if existing:
+                itype = "call" if any(k in low for k in ["зателефонував", "зателефонувала", "called"]) \
+                    else "meeting" if any(k in low for k in ["зустрівся", "зустрілася", "met with"]) \
+                    else "message" if any(k in low for k in ["написав", "написала"]) \
+                    else "general"
+                q.add_interaction(user_id, existing["id"], message, itype)
+                updates.append({"type": "interaction_logged", "name": existing["name"], "itype": itype})
+                return f"Записав взаємодію з {existing['name']}! 📝", updates
 
     if any(k in low for k in _LIST_KW):
         if contacts:

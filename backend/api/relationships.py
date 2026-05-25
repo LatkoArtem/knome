@@ -22,6 +22,7 @@ class ContactRequest(BaseModel):
 class InteractionRequest(BaseModel):
     contact_id: str
     note: str
+    interaction_type: Optional[str] = "general"
 
 
 @router.post("/contact/{user_id}")
@@ -55,6 +56,21 @@ def get_contacts(user_id: str):
             except Exception:
                 pass
     return {"contacts": contacts}
+
+
+@router.post("/interaction/{user_id}")
+def add_interaction(user_id: str, req: InteractionRequest):
+    if not _user_exists(user_id):
+        raise HTTPException(404, "User not found")
+    iid = q.add_interaction(user_id, req.contact_id, req.note, req.interaction_type)
+    return {"id": iid, "status": "created"}
+
+
+@router.get("/interactions/{user_id}/{contact_id}")
+def get_interactions(user_id: str, contact_id: str, limit: int = 5):
+    if not _user_exists(user_id):
+        raise HTTPException(404, "User not found")
+    return {"interactions": q.get_interactions(user_id, contact_id, limit)}
 
 
 @router.delete("/contact/{contact_id}")

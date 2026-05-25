@@ -370,7 +370,17 @@
     "days_until": "через {{days}} дн.",
     "today": "Сьогодні!",
     "stat_total": "Контактів",
-    "stat_birthdays": "Найближчих ДН"
+    "stat_birthdays": "Найближчих ДН",
+    "interaction_log": "Нотатка про взаємодію",
+    "interaction_placeholder": "Про що говорили?",
+    "interaction_btn_save": "Записати",
+    "interaction_btn_saving": "Зберігаю...",
+    "interaction_type_call": "Дзвінок",
+    "interaction_type_message": "Повідомлення",
+    "interaction_type_meeting": "Зустріч",
+    "interaction_type_other": "Інше",
+    "interactions_empty": "Взаємодій ще немає",
+    "last_contact": "Остання взаємодія"
   },
 
   "career": {

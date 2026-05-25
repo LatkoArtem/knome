@@ -406,8 +406,20 @@ def init_schema() -> None:
     conn.execute("CREATE REL TABLE IF NOT EXISTS GRATEFUL (FROM User TO GratitudeEntry)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS REVIEWED (FROM User TO WeeklyReview)")
 
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS Interaction (
+            id STRING,
+            contact_id STRING,
+            date STRING,
+            note STRING,
+            interaction_type STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+
     # Relationships edges
     conn.execute("CREATE REL TABLE IF NOT EXISTS KNOWS (FROM User TO Contact)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS HAD_INTERACTION (FROM User TO Interaction)")
 
     # Career edges
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_CAREER_SKILL (FROM User TO CareerSkill)")

@@ -819,6 +819,30 @@ def delete_contact(contact_id: str) -> None:
     conn.execute("MATCH (c:Contact {id: $id}) DETACH DELETE c", {"id": contact_id})
 
 
+def add_interaction(user_id: str, contact_id: str, note: str, interaction_type: str = "general") -> str:
+    conn = get_connection()
+    iid = str(uuid.uuid4())
+    conn.execute(
+        "CREATE (:Interaction {id: $id, contact_id: $cid, date: $date, note: $note, interaction_type: $itype})",
+        {"id": iid, "cid": contact_id, "date": _now()[:10], "note": note, "itype": interaction_type},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (i:Interaction {id: $iid}) CREATE (u)-[:HAD_INTERACTION]->(i)",
+        {"uid": user_id, "iid": iid},
+    )
+    return iid
+
+
+def get_interactions(user_id: str, contact_id: str, limit: int = 5) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        "MATCH (u:User {id: $uid})-[:HAD_INTERACTION]->(i:Interaction {contact_id: $cid}) "
+        "RETURN i.id, i.date, i.note, i.interaction_type "
+        "ORDER BY i.date DESC LIMIT " + str(limit),
+        {"uid": user_id, "cid": contact_id})
+    return [{"id": r[0], "date": r[1], "note": r[2], "interaction_type": r[3]} for r in rows]
+
+
 # --- Career ---
 
 def add_career_skill(user_id: str, name: str, level: int = 5, category: str = "general") -> str:
