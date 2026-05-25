@@ -12,9 +12,24 @@ from graph.queries import (
     get_recent_transactions,
     get_all_users,
 )
+from llm.client import llm_respond
+
+
+async def _llm_or(system: str, prompt: str, fallback: str) -> str:
+    result = await llm_respond(system, prompt)
+    return result if result else fallback
 
 
 # ── Individual rule functions ────────────────────────────────────────────────
+
+_MORNING_SYSTEM = """You are Knome sending a proactive morning message to the user.
+Keep it warm, brief (1 sentence), and in Ukrainian.
+Mention their name if provided. Prompt them to log today's check-in."""
+
+_WEEKLY_SYSTEM = """You are Knome sending a Sunday weekly recap to the user.
+Keep it encouraging, 2-3 sentences, in Ukrainian.
+Summarize what was good this week based on the context provided."""
+
 
 async def rule_morning_checkin(user_id: str) -> Optional[str]:
     """09:00 daily — nudge if no check-in today."""
@@ -26,7 +41,12 @@ async def rule_morning_checkin(user_id: str) -> Optional[str]:
     ctx = get_user_context(user_id)
     name = ctx.get("user", {}).get("name", "")
     name_part = f", {name}" if name else ""
-    return f"Доброго ранку{name_part}! ☀️ Як пройшла ніч? Запиши сон і настрій — це займе 10 секунд."
+    fallback = f"Доброго ранку{name_part}! ☀️ Як пройшла ніч? Запиши сон і настрій."
+    return await _llm_or(
+        _MORNING_SYSTEM,
+        f"User name: {name}. Morning nudge for daily check-in.",
+        fallback,
+    )
 
 
 async def rule_learning_gap(user_id: str) -> Optional[str]:
@@ -64,7 +84,12 @@ async def rule_low_mood_streak(user_id: str) -> Optional[str]:
     name = ctx.get("user", {}).get("name", "")
     avg = round(sum(c["mood"] for c in checkins) / len(checkins), 1)
     name_part = f", {name}" if name else ""
-    return f"Привіт{name_part} 💙 Помітив, що настрій останніми днями {avg}/10. Як справи? Може варто трохи відпочити або розповісти що турбує?"
+    fallback = f"Привіт{name_part} 💙 Помітив що настрій останніми днями {avg}/10. Як справи?"
+    return await _llm_or(
+        "You are Knome. The user had 4 consecutive low mood check-ins. Send a caring, brief (1-2 sentences) message in Ukrainian. Don't be dramatic.",
+        f"User: {name}. Last 4 moods: {[c['mood'] for c in checkins]}. Avg: {avg}/10.",
+        fallback,
+    )
 
 
 async def rule_spending_anomaly(user_id: str) -> Optional[str]:
@@ -92,7 +117,12 @@ async def rule_spending_anomaly(user_id: str) -> Optional[str]:
     ctx = get_user_context(user_id)
     name = ctx.get("user", {}).get("name", "")
     name_part = f", {name}" if name else ""
-    return f"Привіт{name_part} 💰 Сьогодні витрачено {today_total:.0f} {currency} — це вдвічі більше за звичайний день ({daily_avg:.0f} {currency}). Все гаразд?"
+    fallback = f"Привіт{name_part} 💰 Сьогодні витрачено {today_total:.0f} {currency} — вдвічі більше звичайного. Все гаразд?"
+    return await _llm_or(
+        "You are Knome. The user spent 2x their daily average today. Send a brief, non-judgmental check-in in Ukrainian.",
+        f"User: {name}. Today: {today_total:.0f} {currency}. Daily avg: {daily_avg:.0f} {currency}.",
+        fallback,
+    )
 
 
 async def rule_weekly_report(user_id: str) -> Optional[str]:
@@ -105,7 +135,12 @@ async def rule_weekly_report(user_id: str) -> Optional[str]:
     ctx_str = format_context(ctx)
     name = ctx.get("user", {}).get("name", "")
     name_part = f", {name}" if name else ""
-    return f"Привіт{name_part}! 📊 Тижень завершено. Відкрий дашборд щоб побачити свій прогрес — і не забудь про тижневий огляд!"
+    fallback = f"Привіт{name_part}! 📊 Тиждень завершено — відкрий дашборд щоб побачити прогрес."
+    return await _llm_or(
+        _WEEKLY_SYSTEM,
+        f"User data for the week:\n{ctx_str}",
+        fallback,
+    )
 
 
 async def rule_burnout_risk(user_id: str) -> Optional[str]:
@@ -131,9 +166,11 @@ async def rule_burnout_risk(user_id: str) -> Optional[str]:
     name = ctx.get("user", {}).get("name", "")
     top_factor = result.factors[0] if result.factors else ""
     name_part = f", {name}" if name else ""
-    return (
-        f"Привіт{name_part} 🌿 Помітив ознаки перевтоми (ризик {result.score}/100). "
-        f"Може варто зробити паузу і відновитися? Навіть один вільний вечір допоможе."
+    fallback = f"Привіт{name_part} 🌿 Помітив ознаки перевтоми (ризик {result.score}/100). Може варто зробити паузу?"
+    return await _llm_or(
+        "You are Knome. The user shows high burnout risk. Send a caring, brief (2 sentences) message in Ukrainian. Mention signs of fatigue. Don't be dramatic.",
+        f"User: {name}. Burnout score: {result.score}/100. Top factor: {top_factor}. Recommendations: {', '.join(result.recommendations[:2])}.",
+        fallback,
     )
 
 

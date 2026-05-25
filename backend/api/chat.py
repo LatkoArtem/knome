@@ -62,13 +62,6 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
     await websocket.accept()
     register_connection(user_id, websocket)
 
-    # Deliver any pending proactive messages immediately on connect
-    for pending in pop_pending(user_id):
-        await websocket.send_json({
-            "text": pending["text"],
-            "trigger_type": pending.get("trigger_type"),
-        })
-
     if user_id not in _sessions:
         if user_exists(user_id):
             user = get_user(user_id)
@@ -81,8 +74,7 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                 "context_answers": {},
                 "saved": True,
             }
-            greeting = f"З поверненням, {name}! Чим можу допомогти?" if name else "З поверненням! Чим можу допомогти?"
-            await _stream_text(websocket, greeting)
+            # Existing user — connect silently, no auto-greeting
         else:
             _sessions[user_id] = _init_session()
             await _stream_text(websocket, INITIAL_GREETING)
