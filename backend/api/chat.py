@@ -1,7 +1,10 @@
 import asyncio
 import json
+import logging
 from typing import Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+logger = logging.getLogger(__name__)
 
 from agents.onboarding import INITIAL_GREETING, create_onboarding_agent
 from agents.orchestrator import create_orchestrator
@@ -124,16 +127,20 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
 
             else:
                 # Main chat — orchestrator
-                orchestrator = _get_orchestrator()
-                result = await orchestrator.ainvoke({
-                    "user_id": user_id,
-                    "user_message": user_text,
-                    "domain": "",
-                    "graph_context": {},
-                    "response": "",
-                    "graph_updates": [],
-                })
-                await _stream_text(websocket, result["response"])
+                try:
+                    orchestrator = _get_orchestrator()
+                    result = await orchestrator.ainvoke({
+                        "user_id": user_id,
+                        "user_message": user_text,
+                        "domain": "",
+                        "graph_context": {},
+                        "response": "",
+                        "graph_updates": [],
+                    })
+                    await _stream_text(websocket, result["response"])
+                except Exception as exc:
+                    logger.exception("Orchestrator error for user %s: %s", user_id, exc)
+                    await _stream_text(websocket, "Вибач, сталася внутрішня помилка. Спробуй ще раз.")
 
     except WebSocketDisconnect:
         pass

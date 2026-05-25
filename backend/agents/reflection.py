@@ -20,8 +20,8 @@ async def process(message: str, user_id: str, context: dict) -> tuple[str, list]
         recent = q.get_journal_entries(user_id, limit=3)
         ctx = f"Нові записи щоденника: {len(recent)} шт."
         prompt = f"Контекст: {ctx}\nПовідомлення: {message}"
-        resp = await llm_respond(REFLECTION_SYSTEM, prompt) or "Запис додано до щоденника."
-        return resp, updates
+        resp = await llm_respond(REFLECTION_SYSTEM, prompt) or "Продовжуй рефлексувати."
+        return f"Записано до щоденника! ✍️\n\n{resp}", updates
 
     if any(k in low for k in _GRATITUDE_KW):
         # Extract up to 3 items separated by commas/newlines

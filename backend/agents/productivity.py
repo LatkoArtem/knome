@@ -27,8 +27,15 @@ _POMODORO_KW = [
 _LIST_KW = [
     "список задач", "мої задачі", "що маю зробити", "tasks", "list tasks", "покажи задачі",
 ]
+_FREE_TIME_KW = [
+    "є вільний час", "вільний час", "що робити", "чим зайнятися",
+    "скучно", "що мені зробити", "порадь що робити", "нічого не роблю",
+    "немає чим зайнятися", "що можна зробити", "з чого почати",
+    "free time", "what should i do", "bored",
+]
+
 _PRODUCTIVITY_KW = (
-    _ADD_TASK_KW + _DONE_TASK_KW + _POMODORO_KW + _LIST_KW + [
+    _ADD_TASK_KW + _DONE_TASK_KW + _POMODORO_KW + _LIST_KW + _FREE_TIME_KW + [
         "задач", "завдан", "проект", "дедлайн", "пріоритет",
         "task", "project", "deadline", "priority", "productivity",
         "продуктив", "зробити", "план на день",
@@ -139,6 +146,28 @@ async def process(message: str, user_id: str, context: dict = None) -> tuple[str
             "Позбудься відволікань і фокусуйся!"
         )
         return response, []
+
+    # --- Free time → show priority tasks + suggest pomodoro ---
+    if any(kw in text for kw in _FREE_TIME_KW):
+        tasks = get_tasks(user_id, status="active")
+        if tasks:
+            sorted_tasks = sorted(tasks, key=lambda t: t.get("priority", 3), reverse=True)
+            top = sorted_tasks[:3]
+            lines = []
+            for t in top:
+                p_icon = "🔴" if t.get("priority", 3) >= 4 else "🟡" if t.get("priority", 3) == 3 else "🟢"
+                due = f" (до {t['due_date']})" if t.get("due_date") else ""
+                lines.append(f"{p_icon} «{t['title']}»{due}")
+            return (
+                f"Є {len(tasks)} задач! Ось найважливіші:\n"
+                + "\n".join(lines)
+                + f"\n\nПочни з першої — напиши «починаю 25 хв» і я запущу таймер!"
+            ), []
+        return (
+            "Активних задач немає — ідеальний момент щось запланувати!\n"
+            "• Додай задачу: «задача: назва»\n"
+            "• Або просто напиши «починаю 25 хв» для вільного помодоро"
+        ), []
 
     # --- General productivity question ---
     active_tasks = productivity_ctx.get("active_tasks", 0)

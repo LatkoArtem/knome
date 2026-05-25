@@ -175,6 +175,8 @@ def _query_all(conn, query: str, params: dict = None) -> list:
 def commit_updates(updates: list[dict]) -> None:
     conn = get_connection()
     for upd in updates:
+        if "query" not in upd:
+            continue
         conn.execute(upd["query"], upd.get("params", {}))
 
 
@@ -195,10 +197,10 @@ def get_learning_sessions(user_id: str, limit: int = 10) -> list[dict]:
     rows = _query_all(
         conn,
         f"MATCH (u:User {{id: $uid}})-[:COMPLETED]->(s:LearningSession) "
-        f"RETURN s.duration, s.date ORDER BY s.date DESC LIMIT {limit}",
+        f"RETURN s.duration, s.date, s.topic_id ORDER BY s.date DESC LIMIT {limit}",
         {"uid": user_id},
     )
-    return [{"duration": r[0], "date": r[1]} for r in rows]
+    return [{"duration": r[0], "date": r[1], "topic": r[2] or ""} for r in rows]
 
 
 def add_learning_session(user_id: str, duration_min: int, topic: str = "") -> str:
@@ -655,9 +657,9 @@ def add_project(user_id: str, name: str, description: str = "", deadline: str = 
     conn = get_connection()
     pid = str(uuid.uuid4())
     conn.execute(
-        "CREATE (:Project {id: $id, name: $name, description: $desc, status: 'active', "
+        "CREATE (:Project {id: $id, name: $name, description: $proj_desc, status: 'active', "
         "deadline: $dl, created_at: $ts})",
-        {"id": pid, "name": name, "desc": description, "dl": deadline, "ts": _now()},
+        {"id": pid, "name": name, "proj_desc": description, "dl": deadline, "ts": _now()},
     )
     conn.execute(
         "MATCH (u:User {id: $uid}), (p:Project {id: $pid}) CREATE (u)-[:HAS_PROJECT]->(p)",
@@ -860,9 +862,9 @@ def add_achievement(
     from datetime import date
     aid = str(uuid.uuid4())
     conn.execute(
-        "CREATE (:Achievement {id: $id, title: $title, description: $desc, "
+        "CREATE (:Achievement {id: $id, title: $title, description: $ach_desc, "
         "date: $date, impact: $impact, skills_used: $skills})",
-        {"id": aid, "title": title, "desc": description,
+        {"id": aid, "title": title, "ach_desc": description,
          "date": date.today().isoformat(), "impact": impact, "skills": skills_used},
     )
     conn.execute(
@@ -881,6 +883,48 @@ def get_achievements(user_id: str, limit: int = 20) -> list[dict]:
         {"uid": user_id})
     return [{"id": r[0], "title": r[1], "description": r[2],
              "date": r[3], "impact": r[4], "skills_used": r[5]} for r in rows]
+
+
+# --- Job Applications ---
+
+def add_job_application(
+    user_id: str, company: str, position: str,
+    salary: str = "", notes: str = "",
+) -> str:
+    from datetime import date
+    conn = get_connection()
+    jid = str(uuid.uuid4())
+    today = date.today().isoformat()
+    conn.execute(
+        "CREATE (:JobApplication {id: $id, company: $company, position: $pos, "
+        "salary: $salary, status: $status, applied_date: $date, notes: $notes})",
+        {"id": jid, "company": company, "pos": position,
+         "salary": salary, "status": "applied", "date": today, "notes": notes},
+    )
+    conn.execute(
+        "MATCH (u:User {id: $uid}), (j:JobApplication {id: $jid}) CREATE (u)-[:APPLIED_TO]->(j)",
+        {"uid": user_id, "jid": jid},
+    )
+    return jid
+
+
+def get_job_applications(user_id: str, limit: int = 20) -> list[dict]:
+    conn = get_connection()
+    rows = _query_all(conn,
+        f"MATCH (u:User {{id: $uid}})-[:APPLIED_TO]->(j:JobApplication) "
+        f"RETURN j.id, j.company, j.position, j.salary, j.status, j.applied_date, j.notes "
+        f"ORDER BY j.applied_date DESC LIMIT {limit}",
+        {"uid": user_id})
+    return [{"id": r[0], "company": r[1], "position": r[2],
+             "salary": r[3], "status": r[4], "applied_date": r[5], "notes": r[6]} for r in rows]
+
+
+def update_job_application_status(job_id: str, status: str) -> None:
+    conn = get_connection()
+    conn.execute(
+        "MATCH (j:JobApplication {id: $id}) SET j.status = $status",
+        {"id": job_id, "status": status},
+    )
 
 
 # --- Subscriptions ---
@@ -932,9 +976,9 @@ def add_life_goal(
     conn = get_connection()
     gid = str(uuid.uuid4())
     conn.execute(
-        "CREATE (:LifeGoal {id: $id, title: $title, description: $desc, "
+        "CREATE (:LifeGoal {id: $id, title: $title, description: $goal_desc, "
         "category: $cat, status: $status, target_date: $td, created_at: $ts})",
-        {"id": gid, "title": title, "desc": description, "cat": category,
+        {"id": gid, "title": title, "goal_desc": description, "cat": category,
          "status": "active", "td": target_date, "ts": _now()},
     )
     conn.execute(

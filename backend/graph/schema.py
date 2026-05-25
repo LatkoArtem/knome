@@ -529,6 +529,21 @@ def init_schema() -> None:
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_SHOPPING_ITEM (FROM User TO ShoppingItem)")
     conn.execute("CREATE REL TABLE IF NOT EXISTS HAS_MEAL_PLAN (FROM User TO MealPlan)")
 
+    # --- Career: Job Applications ---
+    conn.execute("""
+        CREATE NODE TABLE IF NOT EXISTS JobApplication (
+            id STRING,
+            company STRING,
+            position STRING,
+            salary STRING,
+            status STRING,
+            applied_date STRING,
+            notes STRING,
+            PRIMARY KEY (id)
+        )
+    """)
+    conn.execute("CREATE REL TABLE IF NOT EXISTS APPLIED_TO (FROM User TO JobApplication)")
+
     # --- Trips ---
     conn.execute("""
         CREATE NODE TABLE IF NOT EXISTS Trip (

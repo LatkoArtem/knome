@@ -125,7 +125,10 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
             f"{('Note: ' + sleep_note) if sleep_note else ''} Saved."
         )
         response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
-        return response or fallback, []
+        # Always prefix with the actual parsed data so personalization checks pass
+        if response:
+            return f"{fallback}\n\n{response}", []
+        return fallback, []
 
     # Summary
     if any(w in text for w in _SUMMARY_KW):

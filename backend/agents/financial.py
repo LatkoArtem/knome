@@ -47,10 +47,34 @@ def _llm_prompt(action: str, user_message: str, context: dict | None) -> str:
 
 async def process(user_message: str, user_id: str, context: dict | None = None) -> tuple[str, list]:
     text = user_message.lower()
+    parsed = _parse_amount_currency(text)
+
+    # Summary FIRST — "Скільки витратив?" must not fall into the expense-log branch
+    if any(w in text for w in _SUMMARY_KW) and not parsed:
+        txs = get_recent_transactions(user_id, limit=20)
+        if not txs:
+            fallback = "Витрат ще не записано. Спробуй: «Витратив 500 грн на їжу»"
+            action = "User asked for spending summary but no transactions recorded yet."
+            response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
+            return response or fallback, []
+        by_cat: dict[str, float] = {}
+        for tx in txs:
+            by_cat[tx["category"]] = by_cat.get(tx["category"], 0) + tx["amount"]
+        total = sum(by_cat.values())
+        currency = txs[0]["currency"] if txs else "UAH"
+        lines = "\n".join(f"• {cat}: {amt:.0f}" for cat, amt in sorted(by_cat.items(), key=lambda x: -x[1]))
+        # Always include structured data to prevent LLM hallucination of amounts
+        prefix = f"Твої витрати (всього: {total:.0f} {currency}):\n{lines}"
+        action = (
+            f"User asked how much they spent. "
+            f"Total: {total:.0f} {currency} across {len(txs)} transactions. "
+            f"By category: {lines}"
+        )
+        response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
+        return f"{prefix}\n\n{response}" if response else prefix, []
 
     # Log transaction
     if any(w in text for w in _SPEND_KW):
-        parsed = _parse_amount_currency(text)
         if parsed:
             amount, currency = parsed
             # Extract meaningful description from original message (not lowercased)
@@ -88,14 +112,14 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
         total = sum(by_cat.values())
         currency = txs[0]["currency"] if txs else "UAH"
         lines = "\n".join(f"• {cat}: {amt:.0f}" for cat, amt in sorted(by_cat.items(), key=lambda x: -x[1]))
-        fallback = f"Останні витрати (сума: {total:.0f} {currency}):\n{lines}"
+        prefix = f"Твої витрати (всього: {total:.0f} {currency}):\n{lines}"
         action = (
             f"User requested spending summary. "
             f"Total: {total:.0f} {currency} across {len(txs)} transactions. "
             f"By category: {lines}"
         )
         response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
-        return response or fallback, []
+        return f"{prefix}\n\n{response}" if response else prefix, []
 
     fallback = (
         "Можу записати витрату або показати статистику. Наприклад:\n"

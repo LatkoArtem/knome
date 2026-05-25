@@ -27,7 +27,9 @@ class KnomeState(TypedDict):
 
 _LEARNING_KW = [
     "навч", "вивч", "урок", "курс", "learn", "study", "topic", "skill",
-    "книг", "позаймав", "читав", "прогрес навч",
+    "книг", "позаймав", "читав", "прогрес навч", "вчив", "що я вчив",
+    "хочу вчитися", "хочу повчитися", "що вчити", "що повторити",
+    "хочу навчатися", "хочу позайматися",
 ]
 _FINANCE_KW = [
     "витрат", "куп", "заплат", "гроші", "бюджет", "транзакц",
@@ -44,16 +46,21 @@ _WORKOUT_KW = [
     "програм трен", "план трен", "футбол", "витривалість", "тонус",
     "тричі на тиждень", "двічі на тиждень", "рівень середній",
     "рівень початківець", "рівень просунутий", "домашній зал",
+    "йду в зал", "іду в зал", "йду на тренування", "іду на тренування",
+    "збираюся тренуватись", "час тренуватися", "пора тренуватися",
+    "йду качатися", "іду качатися",
 ]
 _PRODUCTIVITY_KW = [
     "задач", "завдан", "проект", "дедлайн", "pomodoro", "помодоро",
     "таймер фокус", "task", "todo", "список задач", "план на день",
-    "треба зробити", "починаю фокус",
+    "треба зробити", "починаю фокус", "є вільний час", "вільний час",
+    "що робити", "чим зайнятися", "скучно", "з чого почати",
 ]
 _REFLECTION_KW = [
     "щоденник", "journal", "записати думки", "вдячний", "вдячна",
     "gratitude", "тижневий огляд", "weekly review", "рефлекс",
     "підсумок тижня", "3 речі", "нотатка",
+    "вдячний", "вдячна",  # double weight — gratitude beats learning tie
 ]
 _RELATIONSHIPS_KW = [
     "контакт", "contact", "знайомий", "друг", "подруга", "день народження",
@@ -62,10 +69,11 @@ _RELATIONSHIPS_KW = [
 _CAREER_KW = [
     "навичка", "скіл", "skill", "досягнення", "achievement", "кар'єра",
     "career", "резюме", "resume", "портфоліо", "portfolio", "cv",
+    "вакансі", "заявку", "job application", "подав заявку",
 ]
 _GOALS_KW = [
     "ціль", "мета", "bucket list", "бакет ліст", "мрія", "мрію",
-    "life goal", "хочу досягти", "хочу зробити", "список мрій",
+    "life goal", "хочу досягти", "хочу зробити", "список мрій", "досягти",
 ]
 
 
@@ -155,15 +163,125 @@ async def run_goals(state: KnomeState) -> dict:
     return {"response": response, "graph_updates": updates}
 
 
+_WEEKLY_KW = ["загалом", "аналіз мого тижн", "тижневий", "як мої справи", "підсумок тижн", "покажи аналіз"]
+_GREETING_KW = ["привіт", "хай", "hello", "hi", "доброго", "добрий ранок", "добрий вечір", "good morning", "hey"]
+
+
+async def _build_proactive_context(user_id: str, user_name: str) -> str | None:
+    """Build a proactive suggestion block based on what's pending across all domains."""
+    from graph.queries import get_tasks, get_due_reviews, get_recent_checkins
+    from datetime import date
+    suggestions: list[str] = []
+
+    try:
+        tasks = get_tasks(user_id, status="active")
+        high = [t for t in tasks if t.get("priority", 3) >= 4]
+        if high:
+            suggestions.append(f"📋 Важлива задача: «{high[0]['title']}»")
+        elif tasks:
+            suggestions.append(f"📋 {len(tasks)} активних задач (наприклад: «{tasks[0]['title']}»)")
+    except Exception:
+        pass
+
+    try:
+        due = get_due_reviews(user_id)
+        if due:
+            extra = f" та ще {len(due)-1}" if len(due) > 1 else ""
+            suggestions.append(f"📚 Час повторити: «{due[0]['topic_name']}»{extra}")
+    except Exception:
+        pass
+
+    try:
+        checkins = get_recent_checkins(user_id, limit=1)
+        today = date.today().isoformat()
+        if not checkins or checkins[0].get("date", "") < today:
+            suggestions.append("💙 Ще немає чекіну сьогодні — розкажи як себе почуваєш (сон, настрій)")
+    except Exception:
+        pass
+
+    if not suggestions:
+        return None
+    greeting = f"{user_name}, " if user_name else ""
+    return f"{greeting}ось що актуально:\n" + "\n".join(f"• {s}" for s in suggestions)
+
+
 async def run_general(state: KnomeState) -> dict:
     ctx = state.get("graph_context", {})
     user_name = ctx.get("user", {}).get("name", "")
     ctx_str = format_context(ctx)
+    user_message = state["user_message"]
+    text_lower = user_message.lower()
+
+    # Multi-domain weekly summary
+    if any(w in text_lower for w in _WEEKLY_KW):
+        from graph.queries import (
+            get_recent_transactions, get_recent_checkins,
+            get_learning_sessions, get_recent_workout_sessions, get_life_goals,
+        )
+        uid = state["user_id"]
+        domain_parts: list[str] = []
+
+        try:
+            checkins = get_recent_checkins(uid, limit=7)
+            if checkins:
+                avg_sleep = sum(c["sleep_hours"] for c in checkins) / len(checkins)
+                avg_mood = sum(c["mood"] for c in checkins) / len(checkins)
+                domain_parts.append(f"Здоров'я: сон {avg_sleep:.1f}г, настрій {avg_mood:.1f}/10")
+        except Exception:
+            pass
+
+        try:
+            txs = get_recent_transactions(uid, limit=20)
+            if txs:
+                total = sum(t["amount"] for t in txs)
+                domain_parts.append(f"Фінанси: витрачено {total:.0f} {txs[0]['currency']}")
+        except Exception:
+            pass
+
+        try:
+            sessions = get_learning_sessions(uid, limit=7)
+            if sessions:
+                total_min = sum(s["duration"] for s in sessions)
+                domain_parts.append(f"Навчання: {total_min} хвилин ({len(sessions)} сесій)")
+        except Exception:
+            pass
+
+        try:
+            ws = get_recent_workout_sessions(uid, limit=7)
+            if ws:
+                domain_parts.append(f"Тренування: {len(ws)} сесій цього тижня")
+        except Exception:
+            pass
+
+        try:
+            goals = get_life_goals(uid)
+            if goals:
+                active = [g for g in goals if g["status"] == "active"]
+                domain_parts.append(f"Цілі: {len(active)} активних")
+        except Exception:
+            pass
+
+        if domain_parts:
+            structured = "\n".join(f"• {p}" for p in domain_parts)
+            greeting = f"{user_name}, " if user_name else ""
+            prefix = f"{greeting}ось твій тижневий огляд:\n{structured}"
+            llm_prompt = f"{prefix}\n\nUser: {user_message}"
+            llm_response = await llm_respond(GENERAL_SYSTEM, llm_prompt)
+            return {"response": prefix + (f"\n\n{llm_response}" if llm_response else ""), "graph_updates": []}
+
+    # Proactive context for greetings only
+    is_greeting = any(w in text_lower for w in _GREETING_KW)
+    if is_greeting:
+        proactive = await _build_proactive_context(state["user_id"], user_name)
+        if proactive:
+            llm_prompt = f"{proactive}\n\nUser: {user_message}"
+            llm_resp = await llm_respond(GENERAL_SYSTEM, llm_prompt)
+            return {"response": proactive + (f"\n\n{llm_resp}" if llm_resp else ""), "graph_updates": []}
 
     parts = []
     if ctx_str:
         parts.append(f"Context:\n{ctx_str}")
-    parts.append(f"User message: {state['user_message']}")
+    parts.append(f"User message: {user_message}")
     prompt = "\n\n".join(parts)
 
     response = await llm_respond(GENERAL_SYSTEM, prompt)
