@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import unicodedata
 from typing import Dict, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -13,6 +14,28 @@ from triggers.store import pop_pending
 from triggers.engine import register_connection, unregister_connection
 
 router = APIRouter()
+
+_UNSUPPORTED_LANG_MSG = "Вибачте, я розумію лише українську та англійську мови."
+
+
+def _is_supported_language(text: str) -> bool:
+    """Return False if the message contains >25% chars outside Cyrillic/Latin."""
+    meaningful = [
+        ch for ch in text
+        if not unicodedata.category(ch).startswith("Z")  # not whitespace
+        and unicodedata.category(ch) not in ("Nd", "No", "Nl")  # not digits
+        and unicodedata.category(ch) not in ("Po", "Ps", "Pe", "Pi", "Pf", "Pd", "Pc")  # not punctuation
+        and unicodedata.category(ch) != "So"  # not emoji/symbols
+    ]
+    if not meaningful:
+        return True
+    other = sum(
+        1 for ch in meaningful
+        if unicodedata.category(ch).startswith("L")
+        and not ("Ѐ" <= ch <= "ӿ")  # Cyrillic
+        and not ("A" <= ch <= "Z" or "a" <= ch <= "z")  # Latin
+    )
+    return (other / len(meaningful)) <= 0.25
 
 _sessions: Dict[str, Dict[str, Any]] = {}
 _onboarding_agent = None
@@ -88,6 +111,10 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                 continue
 
             session = _sessions[user_id]
+
+            if not _is_supported_language(user_text):
+                await _stream_text(websocket, _UNSUPPORTED_LANG_MSG)
+                continue
 
             if session["phase"] != "done":
                 # Onboarding flow
