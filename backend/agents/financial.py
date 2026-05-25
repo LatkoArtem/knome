@@ -7,6 +7,8 @@ from ml.classifier import classify
 
 _SPEND_KW = ["витрат", "куп", "заплат", "paid", "spent", "bought", "buy"]
 _SUMMARY_KW = ["скільки", "витрати", "бюджет", "статистик", "spending", "budget", "how much", "summary"]
+_REGRET_KW = ["більше ніж хотів", "більше ніж хотіла", "перевитрат", "занадто багато витрат",
+              "марно витрат", "не варт", "пошкодував", "пошкодувала", "ліміт витрат"]
 
 _CURRENCY_MAP = {
     "грн": "UAH", "uah": "UAH", "₴": "UAH",
@@ -48,6 +50,19 @@ def _llm_prompt(action: str, user_message: str, context: dict | None) -> str:
 async def process(user_message: str, user_id: str, context: dict | None = None) -> tuple[str, list]:
     text = user_message.lower()
     parsed = _parse_amount_currency(text)
+
+    # Spending regret — suggest budget
+    if any(w in text for w in _REGRET_KW):
+        txs = get_recent_transactions(user_id, limit=20)
+        budget_note = "Встанови бюджет на місяць — і я буду попереджати коли ліміт витрат перевищується!"
+        if txs:
+            total = sum(t["amount"] for t in txs)
+            fallback = f"Розумію! Витрачено вже {total:.0f} {txs[0]['currency']} цього місяця.\n{budget_note}"
+        else:
+            fallback = f"Зрозумів — треба контролювати витрати.\n{budget_note}\nСпробуй: «встановити бюджет на їжу 3000 грн»"
+        action = "User expressed regret about overspending. Suggest setting up a budget."
+        response = await llm_respond(FINANCE_SYSTEM, _llm_prompt(action, user_message, context))
+        return (f"{fallback}\n\n{response}" if response else fallback), []
 
     # Summary FIRST — "Скільки витратив?" must not fall into the expense-log branch
     if any(w in text for w in _SUMMARY_KW) and not parsed:

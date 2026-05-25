@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 import uuid
 from datetime import date, timedelta
 from graph import queries as q
@@ -8,6 +9,36 @@ from llm.prompts import RELATIONSHIPS_SYSTEM
 _ADD_KW      = {"додати контакт", "новий контакт", "add contact", "познайомився", "познайомилась"}
 _LIST_KW     = {"контакти", "contacts", "список людей", "мої контакти"}
 _BIRTHDAY_KW = {"день народження", "birthday", "іменини", "хто народжується"}
+
+def _nominative(name: str) -> str:
+    """Best-effort Ukrainian genitive → nominative conversion for names."""
+    # Female names: "Марини" → "Марина", "Тетяни" → "Тетяна"
+    if len(name) > 4 and name.endswith("ини"):
+        return name[:-3] + "ина"
+    if len(name) > 4 and name.endswith("іни"):
+        return name[:-3] + "іна"
+    # Male names ending in genitive -а: "Максима" → "Максим", "Андрія" → "Андрій"
+    if len(name) > 4 and name[-1] == "а":
+        return name[:-1]
+    if len(name) > 4 and name[-1] == "я":
+        return name[:-1] + "й"
+    return name
+
+
+def _extract_birthday_person(text: str) -> str | None:
+    """Extract person name from 'день народження X' or 'у X день народження'."""
+    patterns = [
+        r"день народження\s+(?:мого|моєї|нашого|нашої)?\s*(?:друга|подруги|брата|сестри|колеги)?\s*([А-ЯІЇЄa-яіїє][а-яіїє'A-Za-z]+)",
+        r"(?:у|в)\s+([А-ЯІЇЄa-яіїє][а-яіїє']+)\s+(?:завтра|сьогодні|скоро)?\s*день народження",
+        r"(?:у|в)\s+([А-ЯІЇЄa-яіїє][а-яіїє']+)\s+ДН\b",
+        r"birthday\s+of\s+([A-Za-z]+)",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            raw = m.group(1).strip()
+            return _nominative(raw).title()
+    return None
 
 
 def _upcoming_birthdays(contacts: list[dict], days: int = 14) -> list[dict]:
@@ -35,11 +66,31 @@ async def process(message: str, user_id: str, context: dict) -> tuple[str, list]
     contacts = q.get_contacts(user_id)
 
     if any(k in low for k in _BIRTHDAY_KW):
+        # Check if user mentions a specific person's birthday
+        person = _extract_birthday_person(message)
+        if person:
+            # Check if already in contacts
+            existing = next((c for c in contacts if person.lower() in c["name"].lower()), None)
+            if existing:
+                bd_note = f" День народження: {existing.get('birthday')}." if existing.get("birthday") else ""
+                return (
+                    f"Знаю {existing['name']}!{bd_note}\n"
+                    f"Хочеш встановити нагадування про день народження або записати нотатку?"
+                ), updates
+            else:
+                cid = q.add_contact(user_id, person, "friend")
+                updates.append({"type": "contact_added", "name": person})
+                return (
+                    f"Додав {person} до контактів і запишу нагадування про день народження! 🎂\n"
+                    f"Вкажи дату ДН щоб не пропустити: «{person}: ДН 15 квітня»"
+                ), updates
+
+        # Show upcoming birthdays
         upcoming = _upcoming_birthdays(contacts)
         if upcoming:
             names = ", ".join(f"{c['name']} ({c['days_until']} дн.)" for c in upcoming)
             return f"Найближчі дні народження: {names}.", updates
-        return "Найближчих днів народження немає.", updates
+        return "Найближчих днів народження немає. Але в тебе є день народження друга? Назви ім'я — додам контакт!", updates
 
     if any(k in low for k in _LIST_KW):
         if contacts:

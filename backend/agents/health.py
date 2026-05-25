@@ -5,7 +5,10 @@ from llm.prompts import HEALTH_SYSTEM
 from llm.context import format_context
 from integrations.food import search_food, estimate_portion, calculate_nutrients
 
-_CHECKIN_KW = ["спав", "спала", "настрій", "самопочуття", "слept", "mood", "check-in", "чекін"]
+_CHECKIN_KW = ["спав", "спала", "настрій", "самопочуття", "слept", "mood", "check-in", "чекін",
+               "стомл", "втомл", "виснаж", "не по собі", "нікудишній", "погано себе"]
+_NEGATIVE_MOOD_KW = ["нікудишній", "жахливий", "погано", "не по собі", "стомл", "виснаж", "немає сил",
+                     "нема сил", "все погано", "важко", "втомився", "втомилась"]
 _FOOD_KW = ["з'їв", "з'їла", "поїв", "поїла", "ate", "food", "їжа:", "з'їм"]
 _SUMMARY_KW = ["здоров", "самопочуття", "настрій", "health", "how am i", "check-in", "статус"]
 
@@ -97,10 +100,26 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
         energy = _parse_score(text, ["енергія", "energy"])
 
         if sleep == 0.0 and mood == 5 and energy == 5:
-            fallback = "Розкажи більше! Наприклад:\n«Спав 7 годин, настрій 8, енергія 7»"
-            action = "User mentioned health/check-in but no metrics detected."
+            is_negative = any(w in text for w in _NEGATIVE_MOOD_KW)
+            is_fatigue = any(w in text for w in ["стомл", "втомл", "виснаж", "немає сил", "нема сил"])
+            if is_fatigue:
+                fallback = (
+                    "Часта втома — це сигнал: треба перевірити сон і відпочинок 💙\n"
+                    "Зроби чекін щоб відстежити стан здоров'я:\n"
+                    "«Спав N годин, настрій X, енергія Y»"
+                )
+            elif is_negative:
+                fallback = (
+                    "Схоже, сьогодні не найкращий день 💙\n"
+                    "Зроби швидкий чекін — це допоможе мені відстежити твій настрій і сон:\n"
+                    "«Спав 7 годин, настрій 4, енергія 3»"
+                )
+            else:
+                fallback = "Розкажи про сон і настрій! Зроби чекін:\n«Спав 7 годин, настрій 8, енергія 7»"
+            action = "User mentioned feeling unwell/tired. Ask for check-in: sleep hours, mood 1-10, energy 1-10."
             response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
-            return response or fallback, []
+            # Always use fallback as prefix so health keywords appear
+            return f"{fallback}\n\n{response}" if response else fallback, []
 
         add_checkin(user_id, sleep, mood, energy, text)
 
@@ -153,11 +172,19 @@ async def process(user_message: str, user_id: str, context: dict | None = None) 
         response = await llm_respond(HEALTH_SYSTEM, _llm_prompt(action, user_message, context))
         return response or fallback, []
 
-    fallback = (
-        "Розкажи про здоров'я! Наприклад:\n"
-        "• «Спав 7 годин, настрій 8, енергія 7»\n"
-        "• «З'їв гречку»\n"
-        "• «Яке моє самопочуття?»"
-    )
+    is_tired = any(w in text for w in _NEGATIVE_MOOD_KW)
+    if is_tired:
+        fallback = (
+            "Втома — це сигнал, що треба відпочинок і здоровий сон 💙\n"
+            "Зроби чекін щоб відстежити стан:\n"
+            "«Спав N годин, настрій X, енергія Y»"
+        )
+    else:
+        fallback = (
+            "Розкажи про здоров'я! Наприклад:\n"
+            "• «Спав 7 годин, настрій 8, енергія 7»\n"
+            "• «З'їв гречку»\n"
+            "• «Яке моє самопочуття?»"
+        )
     response = await llm_respond(HEALTH_SYSTEM, _llm_prompt("", user_message, context))
-    return response or fallback, []
+    return (f"{fallback}\n\n{response}" if response else fallback), []

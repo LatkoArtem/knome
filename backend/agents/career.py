@@ -92,6 +92,31 @@ async def process(message: str, user_id: str, context: dict) -> tuple[str, list]
         updates.append({"type": "achievement_added", "id": aid})
         return "Досягнення зафіксовано — молодець!", updates
 
+    # Job search / career change intent
+    _JOB_CHANGE_KW = ["змінити роботу", "нова робота", "шукаю роботу", "знайти роботу",
+                      "пошук роботи", "нова посада", "змінити місце"]
+    if any(k in low for k in _JOB_CHANGE_KW):
+        skills = q.get_career_skills(user_id)
+        jobs = q.get_job_applications(user_id)
+        skill_note = ""
+        if skills:
+            top = sorted(skills, key=lambda s: s.get("level", 0), reverse=True)[:3]
+            names = ", ".join(s["name"] for s in top)
+            skill_note = f"\nТвої топ навички: {names} — виглядає сильно для резюме!"
+        apps_note = f"\nЗаявок вже подано: {len(jobs)}" if jobs else ""
+        fallback = (
+            f"Хочеш змінити роботу — це важливий крок 💼\n"
+            f"Ось план дій для кар'єрного переходу:{skill_note}{apps_note}\n"
+            "1. Оновіть резюме з навичками\n"
+            "2. Визначте вакансії-цілі\n"
+            "3. Подайте 3-5 заявок на тиждень\n"
+            "Напишіть «подав заявку до X» — я запишу до трекеру!"
+        )
+        ctx = f"Навичок: {len(skills)}, заявок: {len(jobs)}"
+        prompt = f"Контекст: {ctx}\nПовідомлення: {message}"
+        resp = await llm_respond(CAREER_SYSTEM, prompt)
+        return (f"{fallback}\n\n{resp}" if resp else fallback), updates
+
     # General career context
     skills = q.get_career_skills(user_id)
     achievements = q.get_achievements(user_id)

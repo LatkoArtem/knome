@@ -10,6 +10,7 @@ import agents.reflection as reflection_agent
 import agents.relationships as relationships_agent
 import agents.career as career_agent
 import agents.goals as goals_agent
+import agents.home as home_agent
 from graph.queries import commit_updates, get_user_context
 from llm.client import llm_respond
 from llm.prompts import GENERAL_SYSTEM
@@ -38,6 +39,9 @@ _FINANCE_KW = [
 _HEALTH_KW = [
     "спав", "спала", "сон", "настрій", "їжа", "з'їв", "здоров",
     "самопочуття", "check-in", "чекін", "sleep", "mood", "food", "health", "ate",
+    "стомл", "втомл", "виснаж", "немає сил", "нема сил",
+    "не по собі", "погано себе", "погано мені", "голова болить",
+    "нікудишній", "поганий настрій", "жахливий настрій",
 ]
 _WORKOUT_KW = [
     "тренув", "потренувавс", "потренувалас", "вправ", "підхід",
@@ -49,6 +53,9 @@ _WORKOUT_KW = [
     "йду в зал", "іду в зал", "йду на тренування", "іду на тренування",
     "збираюся тренуватись", "час тренуватися", "пора тренуватися",
     "йду качатися", "іду качатися",
+    "порухатись", "порухатися", "рухатись", "рухатися",
+    "займатися спортом", "пробіжк", "пробігтись", "пробігтися",
+    "зарядк", "спортзал", "фізичні вправи", "трохи порухатись",
 ]
 _PRODUCTIVITY_KW = [
     "задач", "завдан", "проект", "дедлайн", "pomodoro", "помодоро",
@@ -61,6 +68,8 @@ _REFLECTION_KW = [
     "gratitude", "тижневий огляд", "weekly review", "рефлекс",
     "підсумок тижня", "3 речі", "нотатка",
     "вдячний", "вдячна",  # double weight — gratitude beats learning tie
+    "вдалий день", "все склалось", "чудовий день", "прекрасний день",
+    "хороший день", "добрий день сьогодні",
 ]
 _RELATIONSHIPS_KW = [
     "контакт", "contact", "знайомий", "друг", "подруга", "день народження",
@@ -70,10 +79,19 @@ _CAREER_KW = [
     "навичка", "скіл", "skill", "досягнення", "achievement", "кар'єра",
     "career", "резюме", "resume", "портфоліо", "portfolio", "cv",
     "вакансі", "заявку", "job application", "подав заявку",
+    "змінити роботу", "нова робота", "шукаю роботу", "знайти роботу",
+    "пошук роботи", "нова посада", "змінити місце роботи",
 ]
 _GOALS_KW = [
     "ціль", "мета", "bucket list", "бакет ліст", "мрія", "мрію",
     "life goal", "хочу досягти", "хочу зробити", "список мрій", "досягти",
+    "поїхати", "подорож", "подорожувати", "відпочити на", "відпочинок",
+]
+_HOME_KW = [
+    "прибрати", "прибирання", "помити посуд", "пилосос", "прання",
+    "квартира", "покупки", "список покупок", "купити хліб", "купити молоко",
+    "що приготувати", "меню на тиждень", "господарство", "домашні справи",
+    "ремонт", "вдома треба", "дома треба",
 ]
 
 
@@ -89,6 +107,7 @@ def _classify_domain(text: str) -> str:
         "relationships": sum(1 for w in _RELATIONSHIPS_KW if w in text_lower),
         "career": sum(1 for w in _CAREER_KW if w in text_lower),
         "goals": sum(1 for w in _GOALS_KW if w in text_lower),
+        "home": sum(1 for w in _HOME_KW if w in text_lower),
     }
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "general"
@@ -158,6 +177,13 @@ async def run_career(state: KnomeState) -> dict:
 
 async def run_goals(state: KnomeState) -> dict:
     response, updates = await goals_agent.process(
+        state["user_message"], state["user_id"], context=state.get("graph_context")
+    )
+    return {"response": response, "graph_updates": updates}
+
+
+async def run_home(state: KnomeState) -> dict:
+    response, updates = await home_agent.process(
         state["user_message"], state["user_id"], context=state.get("graph_context")
     )
     return {"response": response, "graph_updates": updates}
@@ -321,6 +347,7 @@ def create_orchestrator():
     graph.add_node("run_relationships", run_relationships)
     graph.add_node("run_career", run_career)
     graph.add_node("run_goals", run_goals)
+    graph.add_node("run_home", run_home)
     graph.add_node("run_general", run_general)
     graph.add_node("apply_updates", apply_updates)
 
@@ -338,6 +365,7 @@ def create_orchestrator():
             "relationships": "run_relationships",
             "career": "run_career",
             "goals": "run_goals",
+            "home": "run_home",
             "general": "run_general",
         },
     )
@@ -350,6 +378,7 @@ def create_orchestrator():
     graph.add_edge("run_relationships", "apply_updates")
     graph.add_edge("run_career", "apply_updates")
     graph.add_edge("run_goals", "apply_updates")
+    graph.add_edge("run_home", "apply_updates")
     graph.add_edge("run_general", "apply_updates")
     graph.add_edge("apply_updates", END)
 

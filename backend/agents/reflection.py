@@ -8,11 +8,23 @@ from llm.prompts import REFLECTION_SYSTEM
 _JOURNAL_KW  = {"journal", "щоденник", "записати", "запис", "нотатка", "нотую", "думки"}
 _GRATITUDE_KW = {"вдячний", "вдячна", "gratitude", "подяка", "дякую", "вдячність", "3 речі"}
 _REVIEW_KW   = {"тижневий", "weekly", "огляд тижня", "підсумок тижня", "review"}
+_GOOD_DAY_KW = {"вдалий день", "все склалось", "чудовий день", "прекрасний день",
+                "хороший день", "добрий день сьогодні"}
 
 
 async def process(message: str, user_id: str, context: dict) -> tuple[str, list]:
     low = message.lower()
     updates: list[dict] = []
+
+    # Good day → offer gratitude / journal
+    if any(k in low for k in _GOOD_DAY_KW):
+        eid = q.add_journal_entry(user_id, message)
+        updates.append({"type": "journal", "id": eid})
+        return (
+            "Записав до щоденника — це важливо фіксувати! 📝\n"
+            "Якщо хочеш практику вдячності, напиши: «вдячний за 1. ... 2. ... 3. ...»\n"
+            "Позитивні дні заряджають на майбутнє 🌟"
+        ), updates
 
     if any(k in low for k in _JOURNAL_KW):
         eid = q.add_journal_entry(user_id, message)
